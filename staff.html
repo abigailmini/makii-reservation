@@ -154,8 +154,16 @@
   <div class="logo"><span class="live-dot"></span>FO STAFF</div>
   <div class="date-nav">
     <button onclick="navDate(-1)">‹</button>
-    <span class="date-label" id="dateLabel"></span>
+    <span class="date-label" id="dateLabel" onclick="toggleCalPicker()" style="cursor:pointer"></span>
     <button onclick="navDate(1)">›</button>
+  </div>
+  <div id="calPicker" style="display:none;position:absolute;top:55px;right:20px;z-index:100;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,0.12);min-width:280px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <button onclick="calPickerNav(-1)" style="background:none;border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center">‹</button>
+      <span id="calPickerMonth" style="font-size:0.9rem;font-weight:500;color:var(--text)"></span>
+      <button onclick="calPickerNav(1)" style="background:none;border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center">›</button>
+    </div>
+    <div id="calPickerGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center"></div>
   </div>
 </div>
 
@@ -308,15 +316,18 @@ function updateDateLabel() {
 async function loadData() {
   document.getElementById('content').innerHTML = '<div class="loading">Loading...</div>';
   try {
-    const [availRes, resRes, locksRes] = await Promise.all([
+    const [availRes, resRes, locksRes, waitRes] = await Promise.all([
       fetch(`${API_BASE}/availability?date=${dateStr(currentDate)}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } }),
       fetch(`${API_BASE}/staff/reservations?date=${dateStr(currentDate)}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } }),
-      fetch(`${API_BASE}/staff/locks?date=${dateStr(currentDate)}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } }).catch(() => ({ json: () => ({ locks: [] }) }))
+      fetch(`${API_BASE}/staff/locks?date=${dateStr(currentDate)}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } }).catch(() => ({ json: () => ({ locks: [] }) })),
+      fetch(`${API_BASE}/staff/waitlist?date=${dateStr(currentDate)}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } }).catch(() => ({ json: () => ({ waitlist: [] }) }))
     ]);
     const avail = await availRes.json();
     const data = await resRes.json();
     const locksData = await locksRes.json();
     currentLocks = locksData.locks || [];
+    const waitData = await waitRes.json();
+    window._waitlistData = waitData.waitlist || [];
     render(avail, data.reservations || []); attachRowListeners();
     // defensive retry: if reservations exist but no guest rows rendered, retry once after short delay
     setTimeout(()=>{ try{ if ((data.reservations||[]).length>0 && document.querySelectorAll(".guest-row").length===0){ console.log("staff: retrying render due to missing rows"); render(avail, data.reservations || []); attachRowListeners(); } }catch(e){console.log("staff: retry failed", e.message);} }, 250);
@@ -460,6 +471,29 @@ function render(avail, reservations) {
 
     html += `</div></div>`;
   });
+
+  // Waitlist section
+  if (window._waitlistData && window._waitlistData.length > 0) {
+    html += `<div class="session-block" style="margin-top:24px;border-color:rgba(184,84,80,0.2)">
+      <div class="session-header" style="background:rgba(184,84,80,0.06)">
+        <div><span class="session-name">📋 Waitlist</span><span class="session-time">${window._waitlistData.length} waiting</span></div>
+      </div>
+      <div class="session-body">`;
+    window._waitlistData.forEach((w, i) => {
+      html += `<div class="guest-row" style="cursor:default">
+        <div class="guest-num">${i+1}</div>
+        <div class="guest-info">
+          <div class="guest-name">${w.name || 'Guest'} <span style="color:var(--dim);font-size:0.78rem">×${w.pax || 1}</span>
+            <span class="status-badge" style="background:rgba(184,84,80,0.1);color:var(--red);border:1px solid rgba(184,84,80,0.2);margin-left:6px">WAITLIST</span>
+          </div>
+          <div class="guest-tags">`;
+      if (w.session) html += `<span class="tag">${w.session}</span>`;
+      if (w.phone) html += `<span class="tag">📞 ${w.phone}</span>`;
+      if (w.email) html += `<span class="tag">✉️ ${w.email}</span>`;
+      html += `</div></div></div>`;
+    });
+    html += `</div></div>`;
+  }
 
   document.getElementById('content').innerHTML = html;
   // Attach direct listeners to guest rows to ensure clicks work on mobile
@@ -731,6 +765,56 @@ async function doUnlock(session) {
     setTimeout(() => loadData(), 500);
   } catch(e) { console.error('Unlock failed', e); }
 }
+
+// ── Calendar Picker ──
+let calPickerDate = new Date();
+function toggleCalPicker() {
+  const el = document.getElementById('calPicker');
+  if (el.style.display === 'none') {
+    calPickerDate = new Date(currentDate);
+    renderCalPicker();
+    el.style.display = 'block';
+  } else el.style.display = 'none';
+}
+function calPickerNav(dir) {
+  calPickerDate.setMonth(calPickerDate.getMonth() + dir);
+  renderCalPicker();
+}
+function renderCalPicker() {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dows = ['M','T','W','T','F','S','S'];
+  const y = calPickerDate.getFullYear(), m = calPickerDate.getMonth();
+  document.getElementById('calPickerMonth').textContent = `${months[m]} ${y}`;
+  const grid = document.getElementById('calPickerGrid');
+  grid.innerHTML = '';
+  dows.forEach(d => { grid.innerHTML += `<div style="font-size:0.6rem;color:var(--dim);padding:4px 0">${d}</div>`; });
+  let startDow = new Date(y, m, 1).getDay(); startDow = startDow === 0 ? 6 : startDow - 1;
+  for (let i = 0; i < startDow; i++) grid.innerHTML += '<div></div>';
+  const days = new Date(y, m + 1, 0).getDate();
+  const todayStr = dateStr(new Date());
+  const selStr = dateStr(currentDate);
+  for (let d = 1; d <= days; d++) {
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isSel = ds === selStr;
+    const isToday = ds === todayStr;
+    const style = isSel ? 'background:var(--gold);color:var(--card);border-radius:50%;font-weight:600' : isToday ? 'color:var(--gold);font-weight:600' : 'color:var(--text)';
+    grid.innerHTML += `<div onclick="pickDate('${ds}')" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.82rem;${style};border-radius:50%;margin:1px auto">${d}</div>`;
+  }
+}
+function pickDate(ds) {
+  const [y,m,d] = ds.split('-').map(Number);
+  currentDate = new Date(y, m-1, d);
+  currentDate.setHours(0,0,0,0);
+  document.getElementById('calPicker').style.display = 'none';
+  updateDateLabel();
+  loadData();
+}
+// Close picker on outside click
+document.addEventListener('click', (e) => {
+  const picker = document.getElementById('calPicker');
+  const label = document.getElementById('dateLabel');
+  if (picker.style.display !== 'none' && !picker.contains(e.target) && e.target !== label) picker.style.display = 'none';
+});
 </script>
 </body>
 </html>

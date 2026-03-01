@@ -111,6 +111,11 @@
   .cal-day.blocked { color: rgba(255,255,255,0.12); cursor: default; text-decoration: line-through; }
   .cal-day.empty { cursor: default; }
   .cal-day.today::after { content: ''; position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); opacity: 0.6; }
+  .cal-day .avail-dot { position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; }
+  .cal-day .avail-dot.green { background: #4A7A5A; }
+  .cal-day .avail-dot.yellow { background: #C9A040; }
+  .cal-day .avail-dot.red { background: #B85450; }
+  .cal-day.today .avail-dot { bottom: 10px; }
 
   /* ── Party Size ── */
   .pax-selector { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -673,6 +678,31 @@ function renderCalendar() {
       };
     }
     grid.appendChild(el);
+  }
+  // Load availability dots for visible month
+  loadCalendarDots(year, month);
+}
+
+async function loadCalendarDots(year, month) {
+  if (!API_BASE) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const dots = document.querySelectorAll('.cal-day:not(.empty):not(.past)');
+  for (const dot of dots) {
+    const dayNum = parseInt(dot.textContent);
+    if (!dayNum) continue;
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+    try {
+      const r = await fetch(`${API_BASE}/availability?date=${ds}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
+      const data = await r.json();
+      const totalMax = data.sessions.reduce((s, sess) => s + sess.maxPax, 0);
+      const totalBooked = data.sessions.reduce((s, sess) => s + sess.bookedPax, 0);
+      const allLocked = data.sessions.every(sess => sess.locked);
+      const pct = totalMax > 0 ? totalBooked / totalMax : 0;
+      const dotEl = document.createElement('span');
+      dotEl.className = 'avail-dot ' + (allLocked || pct >= 1 ? 'red' : pct > 0 ? 'yellow' : 'green');
+      dot.appendChild(dotEl);
+    } catch(e) {}
   }
 }
 
