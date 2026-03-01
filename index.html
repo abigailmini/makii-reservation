@@ -748,6 +748,10 @@ async function loadAvailability() {
     loading.style.display = 'none';
     if (availabilityData.blocked) { error.textContent = `Closed: ${availabilityData.reason}`; error.style.display = 'block'; return; }
     availableCourses = availabilityData.courses || [];
+    // Update addons from availability response (date-filtered)
+    if (availabilityData.addons && availabilityData.addons.length > 0) {
+      ADDONS = availabilityData.addons.map(a => ({ key: a.name, price: a.price, description: a.description || '' }));
+    }
 
     availabilityData.sessions.forEach(s => {
       const isFull = s.remaining <= 0;
@@ -811,10 +815,15 @@ function renderGuestCourses() {
     const card = document.createElement('div');
     card.className = 'course-card';
     card.id = `course-${c.name.replace(/\s/g,'-')}`;
+    const hasDesc = c.description && c.description.trim();
     card.innerHTML = `
-      <div class="course-info">
-        <h3>${c.name}</h3>
+      <div class="course-info" style="flex:1">
+        <div style="display:flex;align-items:center;gap:6px">
+          <h3>${c.name}</h3>
+          ${hasDesc ? `<span class="course-desc-arrow" style="font-size:0.7rem;color:var(--text-dim);cursor:pointer;transition:transform 200ms" onclick="event.stopPropagation();toggleCourseDesc('${c.name.replace(/\s/g,'-')}')">▸</span>` : ''}
+        </div>
         <div class="course-price">RM ${c.price} / pax</div>
+        ${hasDesc ? `<div id="cdesc-${c.name.replace(/\s/g,'-')}" style="display:none;font-size:0.78rem;color:var(--text-dim);white-space:pre-line;margin-top:8px;line-height:1.5;padding:8px 0;border-top:1px solid var(--border)">${c.description}</div>` : ''}
       </div>
       <div class="course-counter">
         <button class="counter-btn" onclick="adjustCourse('${c.name}', -1)">−</button>
@@ -827,6 +836,14 @@ function renderGuestCourses() {
   // init addons UI
   initAddonsUI();
   updateCourseUI();
+}
+
+function toggleCourseDesc(id) {
+  const el = document.getElementById('cdesc-' + id);
+  if (!el) return;
+  const arrow = el.parentElement.querySelector('.course-desc-arrow');
+  if (el.style.display === 'none') { el.style.display = 'block'; if (arrow) arrow.textContent = '▾'; }
+  else { el.style.display = 'none'; if (arrow) arrow.textContent = '▸'; }
 }
 
 function adjustCourse(name, delta) {
@@ -1147,7 +1164,7 @@ function formatDisplayDate(dateStr) {
     const ar = await fetch(`${API_BASE}/config/addons`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
     const addonsData = await ar.json();
     if (Array.isArray(addonsData) && addonsData.length > 0) {
-      ADDONS = addonsData.map(a => ({ key: a.name, price: a.price }));
+      ADDONS = addonsData.map(a => ({ key: a.name, price: a.price, description: a.description || '' }));
     }
   } catch(e) {}
 
