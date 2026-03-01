@@ -544,9 +544,8 @@
 </div>
 
 <script>
-const MAKII_GIST = 'https://gist.githubusercontent.com/abigailmini/2af892278a0127ba440140e2408547ad/raw/makii-api-url.txt';
-const FALLBACK_API = 'https://vector-gained-incorporated-rogers.trycloudflare.com';
-let API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.endsWith('.serveousercontent.com')) ? `${window.location.origin}` : FALLBACK_API;
+const API_BASE_PROD = 'https://api.makiisushi.com';
+let API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? `${window.location.origin}` : API_BASE_PROD;
 
 let selectedDate = null, selectedPax = null, selectedSession = null, selectedCourse = null;
 let guestCourses = [], availableCourses = [], availabilityData = null, blockedDates = [];
@@ -1159,11 +1158,6 @@ function formatDisplayDate(dateStr) {
 
 // ── Init ──
 (async function init() {
-  try {
-    const r = await fetch(MAKII_GIST + '?t=' + Date.now());
-    const url = (await r.text()).trim();
-    if (url.startsWith('https://')) API_BASE = url;
-  } catch(e) {}
   console.log('API_BASE:', API_BASE);
 
   try {
