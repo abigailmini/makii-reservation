@@ -171,6 +171,7 @@
   <div class="stats-bar" id="statsBar"></div>
   <button class="add-manual-btn" onclick="openManualAdd()">＋ Add Manually</button>
   <button class="add-manual-btn" onclick="openLockModal()" style="margin-left:8px">🔒 Lock</button>
+  <button class="add-manual-btn" onclick="openMenuEditor()" style="margin-left:8px">📋 Update Menu</button>
   <div id="content"><div class="loading">Loading reservations...</div></div>
   <div class="refresh-bar">
     <button onclick="loadData()">↻ Refresh</button>
@@ -277,6 +278,32 @@
       <button onclick="closeLockModal()">✕ Close</button>
     </div>
     <div class="modal-status" id="lockStatus"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="menuModal">
+  <div class="modal" style="max-height:85vh;overflow-y:auto">
+    <h3>📋 Update Menu</h3>
+    <label style="font-weight:600;margin-bottom:8px;display:block">Courses</label>
+    <div id="menuCoursesList"></div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <input type="text" id="newCourseName" placeholder="Course name" style="flex:2;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:0.82rem">
+      <input type="number" id="newCoursePrice" placeholder="RM" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:0.82rem">
+      <button class="btn-save" onclick="addMenuItem('course')" style="padding:8px 12px;font-size:0.78rem">＋</button>
+    </div>
+
+    <label style="font-weight:600;margin:20px 0 8px;display:block">À La Carte Add-Ons</label>
+    <div id="menuAddonsList"></div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <input type="text" id="newAddonName" placeholder="Add-on name" style="flex:2;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:0.82rem">
+      <input type="number" id="newAddonPrice" placeholder="RM" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:0.82rem">
+      <button class="btn-save" onclick="addMenuItem('addon')" style="padding:8px 12px;font-size:0.78rem">＋</button>
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px">
+      <button onclick="closeMenuModal()">✕ Close</button>
+    </div>
+    <div class="modal-status" id="menuStatus"></div>
   </div>
 </div>
 
@@ -813,6 +840,76 @@ document.addEventListener('click', (e) => {
   const label = document.getElementById('dateLabel');
   if (picker.style.display !== 'none' && !picker.contains(e.target) && e.target !== label) picker.style.display = 'none';
 });
+
+// ─── Menu Editor ───
+async function openMenuEditor() {
+  document.getElementById('menuModal').classList.add('show');
+  document.getElementById('menuStatus').textContent = '';
+  await loadMenuItems();
+}
+function closeMenuModal() { document.getElementById('menuModal').classList.remove('show'); }
+document.getElementById('menuModal').addEventListener('click', function(e) { if (e.target === this) closeMenuModal(); });
+
+async function loadMenuItems() {
+  try {
+    const r = await fetch(`${API_BASE}/config/courses`, { headers: H });
+    const courses = await r.json();
+    renderMenuList('menuCoursesList', courses, 'course');
+  } catch(e) {}
+  try {
+    const r = await fetch(`${API_BASE}/config/addons`, { headers: H });
+    const addons = await r.json();
+    renderMenuList('menuAddonsList', addons, 'addon');
+  } catch(e) { document.getElementById('menuAddonsList').innerHTML = '<div style="color:var(--text-dim);font-size:0.82rem">No add-ons configured</div>'; }
+}
+
+function renderMenuList(containerId, items, type) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  if (!items || items.length === 0) { c.innerHTML = '<div style="color:var(--text-dim);font-size:0.82rem">None</div>'; return; }
+  items.forEach((item, i) => {
+    const name = item.course || item.name;
+    const price = item.price;
+    const id = item.id;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:6px';
+    row.innerHTML = `
+      <span style="flex:2;font-size:0.85rem">${name}</span>
+      <span style="flex:1;font-size:0.82rem;color:var(--gold)">RM ${price}</span>
+      <button onclick="deleteMenuItem('${type}',${id})" style="background:none;border:1px solid rgba(200,80,60,0.3);color:#C8503C;border-radius:6px;padding:4px 8px;font-size:0.72rem;cursor:pointer">✕</button>
+    `;
+    c.appendChild(row);
+  });
+}
+
+async function addMenuItem(type) {
+  const nameEl = document.getElementById(type === 'course' ? 'newCourseName' : 'newAddonName');
+  const priceEl = document.getElementById(type === 'course' ? 'newCoursePrice' : 'newAddonPrice');
+  const name = nameEl.value.trim();
+  const price = parseInt(priceEl.value) || 0;
+  if (!name) return;
+  const status = document.getElementById('menuStatus');
+  try {
+    const r = await fetch(`${API_BASE}/config/${type === 'course' ? 'courses' : 'addons'}`, {
+      method: 'POST', headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, price })
+    });
+    if (r.ok) { nameEl.value = ''; priceEl.value = ''; status.textContent = '✓ Added'; await loadMenuItems(); }
+    else { status.textContent = '✕ Failed'; }
+  } catch(e) { status.textContent = '✕ Error'; }
+}
+
+async function deleteMenuItem(type, id) {
+  if (!confirm('Remove this item?')) return;
+  const status = document.getElementById('menuStatus');
+  try {
+    const r = await fetch(`${API_BASE}/config/${type === 'course' ? 'courses' : 'addons'}/${id}`, {
+      method: 'DELETE', headers: H
+    });
+    if (r.ok) { status.textContent = '✓ Removed'; await loadMenuItems(); }
+    else { status.textContent = '✕ Failed'; }
+  } catch(e) { status.textContent = '✕ Error'; }
+}
 </script>
 </body>
 </html>

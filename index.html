@@ -163,15 +163,17 @@
   .course-card .course-info h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 600; margin-bottom: 2px; }
   .course-card .course-info .course-price { font-size: 0.82rem; color: var(--gold); }
   .course-card .course-counter { display: flex; align-items: center; gap: 14px; }
-  .course-card .counter-btn {
+  .counter-btn {
     width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
     background: var(--bg-card); color: var(--text); font-size: 1.1rem;
     display: flex; align-items: center; justify-content: center; cursor: pointer;
     transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
   }
-  .course-card .counter-btn:hover { border-color: rgba(181,143,85,0.7); transform: scale(1.1); }
-  .course-card .counter-btn:disabled { opacity: 0.2; cursor: not-allowed; transform: none; }
-  .course-card .counter-val { font-size: 1.1rem; min-width: 24px; text-align: center; color: var(--gold); font-weight: 500; }
+  .counter-btn:hover { border-color: rgba(181,143,85,0.7); transform: scale(1.1); }
+  .counter-btn:disabled { opacity: 0.2; cursor: not-allowed; transform: none; }
+  .counter-val { font-size: 1.1rem; min-width: 24px; text-align: center; color: var(--gold); font-weight: 500; }
+  .addon-card .counter-btn { width: 28px; height: 28px; font-size: 0.85rem; }
+  .addon-card .counter-val { font-size: 0.95rem; }
   .course-remaining { text-align: center; margin-top: 10px; font-size: 0.78rem; color: var(--text-dim); }
   .course-remaining.over { color: #C8503C; }
 
@@ -552,7 +554,7 @@ let isWaitlist = false;
 let stripe = null, stripeElements = null, cardElement = null;
 
 // Add-ons data
-const ADDONS = [
+let ADDONS = [
   { key: 'Extra Uni', price: 68 },
   { key: 'Extra Otoro', price: 58 },
   { key: 'Extra A5 Wagyu', price: 88 },
@@ -1139,6 +1141,14 @@ function formatDisplayDate(dateStr) {
     const res = await fetch(`${API_BASE}/config`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
     const config = await res.json();
     blockedDates = (config.blocked || []).map(b => b['Blocked Date']);
+  } catch(e) {}
+
+  try {
+    const ar = await fetch(`${API_BASE}/config/addons`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
+    const addonsData = await ar.json();
+    if (Array.isArray(addonsData) && addonsData.length > 0) {
+      ADDONS = addonsData.map(a => ({ key: a.name, price: a.price }));
+    }
   } catch(e) {}
 
   try {
