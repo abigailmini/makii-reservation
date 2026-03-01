@@ -543,7 +543,7 @@
 
 <script>
 const MAKII_GIST = 'https://gist.githubusercontent.com/abigailmini/2af892278a0127ba440140e2408547ad/raw/makii-api-url.txt';
-const FALLBACK_API = 'https://dam-attachments-inline-horizontal.trycloudflare.com';
+const FALLBACK_API = 'https://vector-gained-incorporated-rogers.trycloudflare.com';
 let API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.endsWith('.serveousercontent.com')) ? `${window.location.origin}` : FALLBACK_API;
 
 let selectedDate = null, selectedPax = null, selectedSession = null, selectedCourse = null;
@@ -1128,13 +1128,11 @@ function formatDisplayDate(dateStr) {
 
 // ── Init ──
 (async function init() {
-  if (window.location.hostname.endsWith('.github.io')) {
-    try {
-      const r = await fetch(MAKII_GIST + '?t=' + Date.now());
-      const url = (await r.text()).trim();
-      if (url.startsWith('https://')) API_BASE = url;
-    } catch(e) {}
-  }
+  try {
+    const r = await fetch(MAKII_GIST + '?t=' + Date.now());
+    const url = (await r.text()).trim();
+    if (url.startsWith('https://')) API_BASE = url;
+  } catch(e) {}
   console.log('API_BASE:', API_BASE);
 
   try {
