@@ -881,9 +881,12 @@ async function loadMenuItems() {
   } catch(e) { document.getElementById('menuAddonsList').innerHTML = '<div style="color:var(--dim);font-size:0.82rem">No add-ons configured</div>'; }
 }
 
+let _menuItemsCache = { course: [], addon: [] };
+
 function renderMenuList(containerId, items, type) {
   const c = document.getElementById(containerId);
   c.innerHTML = '';
+  _menuItemsCache[type] = items || [];
   if (!items || items.length === 0) { c.innerHTML = '<div style="color:var(--dim);font-size:0.82rem">None</div>'; return; }
   items.forEach(item => {
     const name = item.course || item.name;
@@ -896,7 +899,7 @@ function renderMenuList(containerId, items, type) {
       <div style="display:flex;align-items:center;gap:6px">
         <span style="flex:2;font-size:0.85rem;font-weight:400">${name}</span>
         <span style="font-size:0.82rem;color:var(--gold)">RM ${price}</span>
-        <button onclick="startEdit('${type}',${id},'${name.replace(/'/g,"\\'")}',${price},'${(item.description||'').replace(/'/g,"\\'")}','${item.start_date||''}','${item.end_date||''}')" style="background:none;border:1px solid var(--border);color:var(--gold);border-radius:6px;padding:4px 8px;font-size:0.72rem;cursor:pointer">✏️</button>
+        <button onclick="startEditById('${type}',${id})" style="background:none;border:1px solid var(--border);color:var(--gold);border-radius:6px;padding:4px 8px;font-size:0.72rem;cursor:pointer">✏️</button>
         <button onclick="deleteMenuItem('${type}',${id})" style="background:none;border:1px solid rgba(200,80,60,0.3);color:#C8503C;border-radius:6px;padding:4px 8px;font-size:0.72rem;cursor:pointer">✕</button>
       </div>
       ${dateRange ? `<div style="font-size:0.7rem;color:var(--dim);margin-top:4px">📅 ${dateRange}</div>` : ''}
@@ -906,15 +909,18 @@ function renderMenuList(containerId, items, type) {
   });
 }
 
-function startEdit(type, id, name, price, desc, startDate, endDate) {
+function startEditById(type, id) {
+  const items = _menuItemsCache[type] || [];
+  const item = items.find(i => i.id === id);
+  if (!item) { console.error('Item not found:', type, id); return; }
+  const name = item.course || item.name;
   _editingItem = { type, id };
   const prefix = type === 'course' ? 'Course' : 'Addon';
   document.getElementById(`new${prefix}Name`).value = name;
-  document.getElementById(`new${prefix}Price`).value = price;
-  document.getElementById(`new${prefix}Desc`).value = desc;
-  document.getElementById(`new${prefix}Start`).value = startDate;
-  document.getElementById(`new${prefix}End`).value = endDate;
-  // Change the add button to save
+  document.getElementById(`new${prefix}Price`).value = item.price;
+  document.getElementById(`new${prefix}Desc`).value = item.description || '';
+  document.getElementById(`new${prefix}Start`).value = item.start_date || '';
+  document.getElementById(`new${prefix}End`).value = item.end_date || '';
   const form = document.getElementById(`add${prefix}Form`);
   form.style.border = '2px solid var(--gold)';
   form.style.borderRadius = '10px';
