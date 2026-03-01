@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fusion Omakase — Reservation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Inter:wght@300;400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --gold: #C9A96E;
+    --gold-light: #D7B67E;
+    --bg: #0F0D0A;
+    --bg-card: #16130F;
+    --bg-hover: #1C1813;
+    --text: #E8E8E8;
+    --text-dim: #9a9a9a;
+    --border: rgba(201,169,110,0.12);
+    --success: #4A7A5A;
+    --error: #8A3A3A;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-weight: 300;
+    -webkit-font-smoothing: antialiased;
+    background-image: radial-gradient(ellipse at 50% 30%, rgba(120,80,30,0.08), transparent 70%);
+  }
+
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .wave { width: 100%; max-width: 240px; margin: 18px auto 0; opacity:0.6; }
+
+  /* ── Landing ── */
+  .landing {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; gap: 24px; padding-top: 40px;
+    transition: opacity 300ms ease, transform 300ms ease;
+  }
+
+  .logo-section h1 { font-family: 'Cormorant Garamond', serif; font-size: 3.2rem; font-weight: 300; color: var(--gold); letter-spacing: 0.15em; line-height: 1.1; text-transform: uppercase; }
+  .logo-section .subtitle { font-family: 'Cormorant Garamond', serif; font-size: 1rem; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 6px; }
+  .logo-section .tagline { margin-top: 10px; color: #cfc6b8; font-size: 0.95rem; opacity:0.95; font-weight:300; letter-spacing:0.02em; }
+  .logo-section .divider { width: 60px; height: 1px; background: linear-gradient(90deg, rgba(181,143,85,0.9), rgba(181,143,85,0.2)); margin: 14px auto; }
+  .logo-section .address { font-size: 0.8rem; color: var(--text-dim); line-height: 1.6; }
+
+  /* buttons */
+  .btn {
+    display: block; width: 100%; padding: 12px 28px;
+    border: 1px solid rgba(181,143,85,0.9); background: transparent; color: var(--gold);
+    font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 400;
+    letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer;
+    transition: all 220ms ease; text-align: center; text-decoration: none;
+    border-radius: 8px; backdrop-filter: blur(6px);
+  }
+  .btn.primary { background: transparent; color: var(--gold); padding: 10px 26px; }
+  .btn.primary:hover { background: rgba(181,143,85,0.06); color: var(--gold-light); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(11,11,11,0.5); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform:none; }
+
+  .landing-buttons { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── Steps ── */
+  .step { display: none; flex-direction: column; gap: 20px; padding-top: 20px; opacity:0; transform:translateY(6px); transition: opacity 260ms ease, transform 260ms ease; }
+  .step.active { display: flex; opacity:1; transform:none; }
+
+  .step-header { display: flex; align-items: center; gap: 12px; }
+  .back-btn { background: none; border: none; color: var(--text-dim); font-size: 1.2rem; cursor: pointer; padding: 6px 8px; }
+  .step-title { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; color: var(--gold); }
+
+  /* ── Progress Bar ── */
+  .progress-bar { display: flex; gap: 6px; margin-bottom: 4px; }
+  .progress-bar .dot { flex:1; height: 3px; border-radius: 2px; background: rgba(201,169,110,0.15); transition: background 300ms ease; }
+  .progress-bar .dot.done { background: var(--gold); }
+  .progress-bar .dot.current { background: rgba(201,169,110,0.5); }
+
+  /* ── Calendar Grid ── */
+  .cal-wrap {
+    background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent);
+    border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+  }
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .cal-header .cal-month { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; color: var(--gold); font-weight: 400; letter-spacing: 0.04em; }
+  .cal-header button { background: none; border: 1px solid var(--border); color: var(--text-dim); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem; transition: all 180ms ease; display: flex; align-items: center; justify-content: center; }
+  .cal-header button:hover { border-color: rgba(181,143,85,0.6); color: var(--gold); background: rgba(181,143,85,0.04); }
+  .cal-header button:disabled { opacity: 0.15; cursor: not-allowed; }
+
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+  .cal-grid .cal-dow { font-size: 0.6rem; color: rgba(201,169,110,0.5); text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 0 10px; font-weight: 500; }
+
+  .cal-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; font-size: 0.88rem; cursor: pointer;
+    transition: all 180ms ease; border: 1.5px solid transparent; color: var(--text); position: relative;
+  }
+  .cal-day:hover:not(.disabled):not(.past):not(.empty):not(.blocked) { background: rgba(181,143,85,0.08); color: var(--gold); }
+  .cal-day.selected { background: rgba(181,143,85,0.15); border-color: var(--gold); color: var(--gold); font-weight: 500; box-shadow: 0 0 12px rgba(201,169,110,0.15); }
+  .cal-day.past, .cal-day.disabled { color: rgba(255,255,255,0.12); cursor: default; }
+  .cal-day.blocked { color: rgba(255,255,255,0.12); cursor: default; text-decoration: line-through; }
+  .cal-day.empty { cursor: default; }
+  .cal-day.today::after { content: ''; position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); opacity: 0.6; }
+
+  /* ── Party Size ── */
+  .pax-selector { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pax-item {
+    width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 50%; cursor: pointer;
+    transition: transform 160ms ease, background 160ms ease; font-size: 0.95rem;
+    background: var(--bg-card); box-shadow: inset 0 -2px 6px rgba(0,0,0,0.6);
+  }
+  .pax-item:hover { transform: translateY(-3px); border-color: rgba(181,143,85,0.9); }
+  .pax-item.selected { border-color: rgba(181,143,85,0.95); background: linear-gradient(180deg, rgba(181,143,85,0.06), rgba(0,0,0,0)); color: var(--gold); }
+
+  /* ── Sessions ── */
+  .session-list { display: flex; flex-direction: column; gap: 12px; }
+  .session-card {
+    padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px;
+    cursor: pointer; transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+    display: flex; justify-content: space-between; align-items: center; position: relative; overflow: hidden;
+  }
+  .session-card:hover:not(.full) { border-color: rgba(181,143,85,0.95); transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+  .session-card.selected { border-color: rgba(181,143,85,0.95); background: rgba(181,143,85,0.04); }
+  .session-card.full { opacity: 0.38; cursor: not-allowed; }
+  .session-card.seats-low { border-color: rgba(201,169,110,0.4); }
+  .session-card.seats-critical { border-color: rgba(200,80,60,0.5); }
+  .session-info h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 400; margin-bottom: 4px; }
+  .session-info .time { font-size: 0.8rem; color: var(--text-dim); }
+  .session-meta { text-align: right; }
+  .session-meta .price { color: var(--gold); font-size: 0.9rem; }
+  .session-meta .seats-badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; display: inline-block; margin-top: 4px; }
+  .session-meta .seats-badge.green { color: var(--success); }
+  .session-meta .seats-badge.yellow { color: #C9A96E; background: rgba(201,169,110,0.08); }
+  .session-meta .seats-badge.red { color: #C8503C; background: rgba(200,80,60,0.08); }
+  .session-meta .seats-badge.full { color: var(--text-dim); }
+  .session-meta .waitlist-tag { font-size: 0.68rem; color: var(--error); border: 1px solid var(--error); padding: 4px 8px; border-radius: 6px; }
+
+  /* ── Course Counter Cards ── */
+  .course-card {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px; border: 1px solid var(--border); border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+    transition: border-color 200ms ease, background 200ms ease;
+  }
+  .course-card.has-count { border-color: rgba(181,143,85,0.5); background: rgba(181,143,85,0.03); }
+  .course-card .course-info h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 400; margin-bottom: 2px; }
+  .course-card .course-info .course-price { font-size: 0.82rem; color: var(--gold); }
+  .course-card .course-counter { display: flex; align-items: center; gap: 14px; }
+  .course-card .counter-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--bg-card); color: var(--text); font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+  }
+  .course-card .counter-btn:hover { border-color: rgba(181,143,85,0.7); transform: scale(1.1); }
+  .course-card .counter-btn:disabled { opacity: 0.2; cursor: not-allowed; transform: none; }
+  .course-card .counter-val { font-size: 1.1rem; min-width: 24px; text-align: center; color: var(--gold); font-weight: 500; }
+  .course-remaining { text-align: center; margin-top: 10px; font-size: 0.78rem; color: var(--text-dim); }
+  .course-remaining.over { color: #C8503C; }
+
+  /* ── Form ── */
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.12em; }
+  .form-group input, .form-group textarea {
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+    border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+    color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 300;
+    outline: none; transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .form-group input:focus, .form-group textarea:focus { border-color: rgba(181,143,85,0.95); box-shadow: 0 8px 24px rgba(11,11,11,0.6); }
+  .form-group textarea { resize: vertical; min-height: 88px; }
+  .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(255,255,255,0.22); }
+
+  /* ── Terms & Conditions ── */
+  .tnc-section { margin-top: 4px; }
+  .tnc-toggle {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+    cursor: pointer; transition: border-color 180ms ease;
+    font-size: 0.82rem; color: var(--text-dim); letter-spacing: 0.03em;
+  }
+  .tnc-toggle:hover { border-color: rgba(181,143,85,0.4); }
+  .tnc-toggle .tnc-arrow { transition: transform 200ms ease; font-size: 1.1rem; }
+  .tnc-toggle.open .tnc-arrow { transform: rotate(90deg); }
+  .tnc-toggle.open { border-color: rgba(181,143,85,0.3); border-radius: 10px 10px 0 0; border-bottom: none; }
+
+  .tnc-body {
+    max-height: 0; overflow: hidden; transition: max-height 350ms ease;
+    border: 1px solid transparent; border-radius: 0 0 10px 10px;
+  }
+  .tnc-body.open { max-height: 600px; border-color: var(--border); border-top: none; overflow-y: auto; }
+
+  .tnc-content {
+    padding: 14px 16px; font-size: 0.76rem; color: var(--text-dim); line-height: 1.7;
+  }
+  .tnc-content h4 { color: var(--gold); font-family: 'Cormorant Garamond', serif; font-size: 0.9rem; font-weight: 400; margin: 12px 0 6px; }
+  .tnc-content h4:first-child { margin-top: 0; }
+  .tnc-content p { margin-bottom: 10px; }
+  .tnc-content strong { color: var(--text); font-weight: 400; }
+
+  .tnc-checkbox {
+    display: flex; align-items: flex-start; gap: 10px; margin-top: 14px;
+    font-size: 0.8rem; color: var(--text-dim); cursor: pointer; line-height: 1.4;
+  }
+  .tnc-checkbox input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none; width: 18px; height: 18px; flex-shrink: 0;
+    border: 1.5px solid var(--border); border-radius: 4px; background: var(--bg-card);
+    cursor: pointer; position: relative; margin-top: 1px; transition: all 180ms ease;
+  }
+  .tnc-checkbox input[type="checkbox"]:checked { border-color: var(--gold); background: rgba(201,169,110,0.15); }
+  .tnc-checkbox input[type="checkbox"]:checked::after {
+    content: '✓'; position: absolute; top: -1px; left: 2px; font-size: 0.75rem; color: var(--gold);
+  }
+
+  /* ── Payment Step ── */
+  .payment-summary {
+    background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent);
+    border: 1px solid var(--border); border-radius: 12px; padding: 20px;
+  }
+  .payment-summary .summary-title {
+    font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--gold);
+    margin-bottom: 14px; font-weight: 400;
+  }
+  .payment-summary .row { display:flex; justify-content:space-between; padding:7px 0; font-size: 0.85rem; }
+  .payment-summary .row .label { color: var(--text-dim); }
+  .payment-summary .row.total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 12px; }
+  .payment-summary .row.total .label, .payment-summary .row.total span:last-child { color: var(--gold); font-weight: 500; font-size: 0.95rem; }
+
+  .card-section { margin-top: 24px; }
+  .card-section .section-label { margin-bottom: 12px; }
+
+  .card-element-wrapper {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+  }
+  .card-element-wrapper.focused { border-color: rgba(181,143,85,0.6); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+
+  .hold-notice {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: rgba(201,169,110,0.04); border: 1px solid rgba(201,169,110,0.08);
+    border-radius: 8px; padding: 12px 14px; margin-top: 16px;
+  }
+  .hold-notice .icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+  .hold-notice .text { font-size: 0.78rem; color: var(--text-dim); line-height: 1.5; }
+  .hold-notice .text strong { color: var(--text); font-weight: 400; }
+
+  .trust-badges { margin-top: 20px; padding: 16px; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 10px; }
+  .badge-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .badge-row svg { opacity: 0.85; }
+  .badge-divider { width: 60%; margin: 12px auto; height: 1px; background: var(--border); }
+  .badge-row.powered { font-size: 0.72rem; color: var(--text-dim); gap: 6px; }
+  .badge-row.powered strong { color: var(--text); font-weight: 400; }
+
+  .badge-row.powered { font-size: 0.72rem; color: var(--text-dim); gap: 6px; }
+  .badge-row.powered strong { color: var(--text); font-weight: 400; }
+
+  /* ── Success Page ── */
+  .success-page { text-align: center; padding: 50px 0 30px; animation: fadeIn 500ms ease both; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(10px);} to { opacity:1; transform:none; } }
+
+  .success-icon {
+    width: 80px; height: 80px; margin: 0 auto 24px;
+    border: 2px solid var(--gold); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle, rgba(201,169,110,0.06), transparent);
+    box-shadow: 0 0 40px rgba(201,169,110,0.08);
+    animation: scaleIn 400ms 200ms ease both;
+  }
+  @keyframes scaleIn { from { transform: scale(0.6); opacity:0; } to { transform: scale(1); opacity:1; } }
+  .success-icon svg { width: 32px; height: 32px; }
+
+  .success-page h2 {
+    font-family: 'Cormorant Garamond', serif; font-size: 1.8rem;
+    color: var(--gold); font-weight: 300; margin-bottom: 8px; letter-spacing: 0.05em;
+  }
+  .success-page .success-sub { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 28px; line-height: 1.6; }
+
+  .success-details {
+    background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent);
+    border: 1px solid var(--border); border-radius: 12px; padding: 20px;
+    text-align: left; margin-bottom: 24px;
+  }
+  .success-details .detail-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 10px 0; border-bottom: 1px solid rgba(201,169,110,0.06); font-size: 0.85rem;
+  }
+  .success-details .detail-row:last-child { border-bottom: none; }
+  .success-details .detail-row .label { color: var(--text-dim); min-width: 90px; }
+  .success-details .detail-row .value { text-align: right; color: var(--text); }
+
+  .success-note {
+    background: rgba(74,122,90,0.08); border: 1px solid rgba(74,122,90,0.15);
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;
+    font-size: 0.8rem; color: var(--text-dim); line-height: 1.6; text-align: left;
+  }
+  .success-note strong { color: var(--text); font-weight: 400; }
+
+  .success-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+
+  .loading { text-align: center; padding: 28px; color: var(--text-dim); position:relative; }
+  .loading:before { content:''; display:inline-block; width:18px; height:18px; border-radius:50%; border:3px solid rgba(181,143,85,0.15); border-top-color: var(--gold); animation: spin 900ms linear infinite; margin-right:10px; vertical-align:middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg { color: #C97A4E; font-size: 0.9rem; text-align: center; padding: 8px; }
+  .section-label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.12em; }
+
+  /* Add-ons styling */
+  .addons-section { margin-top: 16px; display:flex; flex-direction:column; gap:8px; }
+  .addon-card { display:flex; align-items:center; justify-content:space-between; padding:12px; border:1px solid var(--border); border-radius:10px; background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent); }
+  .addon-info { display:flex; flex-direction:column; }
+  .addon-name { font-size:0.95rem; color:var(--text); }
+  .addon-price { font-size:0.82rem; color:var(--gold); }
+
+  @media (max-width:480px) {
+    .container { padding: 18px; }
+    .logo-section h1 { font-size: 3rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Landing -->
+  <div class="landing" id="landing">
+    <div class="logo-section">
+      <img src="logo.png" alt="Fusion Omakase by Makii Sushi" style="width:320px;height:auto;margin-bottom:12px">
+      <div class="tagline">A fusion omakase journey — seasonal, intimate, handcrafted</div>
+      <div class="divider"></div>
+      <svg class="wave" viewBox="0 0 120 20" xmlns="http://www.w3.org/2000/svg"><path d="M0 10 C 20 2, 40 18, 60 10 C 80 2,100 18,120 10" stroke="rgba(181,143,85,0.6)" stroke-width="0.9" fill="none" stroke-linecap="round"/></svg>
+      <div class="address">
+        Old Klang Road, E2-0-21<br>
+        Jalan 1/152, Taman Oug Parklane, KL 58200
+      </div>
+    </div>
+    <div class="landing-buttons">
+      <button class="btn primary" onclick="startReservation()">Make a Reservation</button>
+      <a class="btn" href="tel:+60167611931">Call Us</a>
+    </div>
+  </div>
+
+  <!-- Step 1: Date -->
+  <div class="step" id="step1">
+    <div class="progress-bar"><div class="dot current"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="step-header">
+      <button class="back-btn" onclick="goLanding()">←</button>
+      <span class="step-title">Select Date</span>
+    </div>
+    <div class="cal-wrap">
+      <div class="cal-header">
+        <button id="calPrev" onclick="calNav(-1)">‹</button>
+        <span class="cal-month" id="calMonth"></span>
+        <button id="calNext" onclick="calNav(1)">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <button class="btn primary" id="step1Next" disabled onclick="goStep2()">Continue</button>
+  </div>
+
+  <!-- Step 2: Session -->
+  <div class="step" id="step2">
+    <div class="progress-bar"><div class="dot done"></div><div class="dot current"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="step-header">
+      <button class="back-btn" onclick="goStep1()">←</button>
+      <span class="step-title">Select Session</span>
+    </div>
+    <div id="sessionsLoading" class="loading">Loading availability...</div>
+    <div class="session-list" id="sessionList"></div>
+    <div id="sessionError" class="error-msg" style="display:none"></div>
+    <button class="btn primary" id="step2Next" disabled onclick="goStep2b()">Continue</button>
+  </div>
+
+  <!-- Step 2b: Party Size + Course -->
+  <div class="step" id="step2b">
+    <div class="progress-bar"><div class="dot done"></div><div class="dot done"></div><div class="dot current"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="step-header">
+      <button class="back-btn" onclick="goStep2()">←</button>
+      <span class="step-title">Party Size & Menu</span>
+    </div>
+    <div class="section-label">Party Size</div>
+    <div class="pax-selector" id="paxSelector"></div>
+    <div id="courseSection" style="display:none">
+      <div class="section-label" style="margin-top:20px">Select Courses</div>
+      <div id="courseList" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div class="course-remaining" id="courseRemaining"></div>
+
+      <!-- Add-ons (À La Carte) -->
+      <div class="section-label" style="margin-top:14px">Add-ons (À La Carte)</div>
+      <div class="addons-section" id="addonsList"></div>
+    </div>
+    <button class="btn primary" id="step2bNext" disabled onclick="goStep3()">Continue</button>
+  </div>
+
+  <!-- Step 3: Details -->
+  <div class="step" id="step3">
+    <div class="progress-bar"><div class="dot done"></div><div class="dot done"></div><div class="dot done"></div><div class="dot current"></div><div class="dot"></div></div>
+    <div class="step-header">
+      <button class="back-btn" onclick="goStep2b()">←</button>
+      <span class="step-title">Your Details</span>
+    </div>
+    <div class="form-group">
+      <label>Name *</label>
+      <input type="text" id="guestName" placeholder="Full name" required oninput="syncGuest1()">
+    </div>
+    <div class="form-group">
+      <label>Phone *</label>
+      <input type="tel" id="guestPhone" placeholder="+60 12 345 6789" required>
+    </div>
+    <div class="form-group">
+      <label>Email *</label>
+      <input type="email" id="guestEmail" placeholder="your@email.com" required>
+    </div>
+
+    <!-- Guest Names -->
+    <div class="section-label" style="margin-top:8px">Guest Names (optional)</div>
+    <div id="guestNamesList" style="display:flex;flex-direction:column;gap:8px"></div>
+
+    <div class="form-group">
+      <label>Dietary / Special Request</label>
+      <textarea id="guestNotes" placeholder="e.g. No shellfish, birthday celebration, vegetarian, seating preference..."></textarea>
+    </div>
+    <!-- T&C -->
+    <div class="tnc-section">
+      <div class="tnc-toggle" onclick="document.getElementById('tncBody').classList.toggle('open'); this.classList.toggle('open')">
+        <span>Terms & Conditions</span>
+        <span class="tnc-arrow">›</span>
+      </div>
+      <div class="tnc-body" id="tncBody">
+        <div class="tnc-content">
+          <h4>Reservation Terms & Conditions</h4>
+          <p><strong>1. Card Guarantee Required</strong><br>All reservations are secured via a card guarantee. No upfront deposit is required. The authorised amount will be released upon dining as scheduled. Cancellations or no-shows within 48 hours will result in forfeiture of the authorised amount.</p>
+          <p><strong>2. Changes to Reservation</strong><br>Any changes to reservation date or time must be informed at least 48 hours prior to the scheduled dining time. Failure to do so may result in cancellation of the booking and forfeiture of the card guarantee.</p>
+          <p><strong>3. Menu, Mains & Dietary Requests</strong><br>All changes to mains selection or dietary restrictions must be informed at least 2 days in advance. As we operate on a single tasting menu, last-minute requests may not be accommodated.</p>
+          <p><strong>4. Corkage Policy</strong><br>A corkage fee of RM200 applies to liquor brought by guests.</p>
+          <p><strong>5. Private Events</strong><br>For private dining or events, please WhatsApp us at <a href="https://wa.me/60167611931" style="color:var(--gold)">016-761 1931</a>.</p>
+          <p><strong>6. Age Policy</strong><br>To maintain the dining experience and privacy of all guests, children below 6 years old are not permitted. Guests aged 6 years and above are welcome but must order one full course menu.</p>
+          <h4>Time & Table Policy</h4>
+          <p>• Tables will be held for 30 minutes maximum from the reservation time.<br>• Each reservation is allocated 2 hours of dining time.<br>• Kindly arrive and depart promptly to ensure a smooth dining flow for all guests.</p>
+        </div>
+      </div>
+      <label class="tnc-checkbox">
+        <input type="checkbox" id="tncAgree" onchange="updateStep3Btn()">
+        <span>I have read and agree to the Terms & Conditions</span>
+      </label>
+    </div>
+
+    <div id="formError" class="error-msg" style="display:none"></div>
+    <button class="btn primary" id="step3Next" disabled onclick="goStep4()">Continue to Payment</button>
+  </div>
+
+  <!-- Step 4: Payment -->
+  <div class="step" id="step4">
+    <div class="progress-bar"><div class="dot done"></div><div class="dot done"></div><div class="dot done"></div><div class="dot done"></div><div class="dot current"></div></div>
+    <div class="step-header">
+      <button class="back-btn" onclick="goStep3()">←</button>
+      <span class="step-title">Payment</span>
+    </div>
+
+    <div class="payment-summary" id="paymentSummary"></div>
+
+    <div class="card-section">
+      <div class="section-label">Card Details</div>
+      <div class="card-element-wrapper" id="cardWrapper">
+        <div id="card-element"></div>
+      </div>
+      <div id="cardError" class="error-msg" style="display:none"></div>
+
+      <div class="hold-notice">
+        <span class="icon">🔒</span>
+        <div class="text">
+          A <strong>temporary hold of RM <span id="holdAmount">100</span></strong> will be placed on your card to secure your reservation. This is <strong>not a charge</strong> — it will be automatically released if not captured within 48 hours.
+        </div>
+      </div>
+
+      <!-- Trust badges -->
+      <div class="trust-badges">
+        <div class="badge-row">
+          <!-- Visa -->
+          <svg viewBox="0 0 48 32" width="44" height="28"><rect width="48" height="32" rx="4" fill="#1A1F71"/><text x="24" y="21" text-anchor="middle" fill="#FFFFFF" font-family="Arial,sans-serif" font-weight="bold" font-size="14" font-style="italic">VISA</text></svg>
+          <!-- Mastercard -->
+          <svg viewBox="0 0 48 32" width="44" height="28"><rect width="48" height="32" rx="4" fill="#1A1A2E"/><circle cx="19" cy="16" r="9" fill="#EB001B" opacity="0.9"/><circle cx="29" cy="16" r="9" fill="#F79E1B" opacity="0.9"/><path d="M24 9.5a9 9 0 010 13 9 9 0 010-13z" fill="#FF5F00"/></svg>
+          <!-- Amex -->
+          <svg viewBox="0 0 48 32" width="44" height="28"><rect width="48" height="32" rx="4" fill="#2E77BC"/><text x="24" y="19" text-anchor="middle" fill="#FFFFFF" font-family="Arial,sans-serif" font-weight="bold" font-size="7.5">AMEX</text></svg>
+        </div>
+        <div class="badge-divider"></div>
+        <div class="badge-row powered">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9a9a9a" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Secured by <strong>Stripe</strong> · 256-bit SSL encryption</span>
+        </div>
+        <div class="badge-row powered" style="margin-top:2px">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9a9a9a" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+          <span>100% Secure · Your card details are never stored</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn primary" id="payBtn" onclick="processPayment()" style="margin-top:20px">Authorize & Confirm</button>
+  </div>
+
+  <!-- Step 5: Success -->
+  <div class="step" id="step5">
+    <div class="success-page">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h2>Reservation Confirmed</h2>
+      <p class="success-sub" id="successSub">Thank you for choosing Fusion Omakase.<br>We look forward to welcoming you.</p>
+
+      <div class="success-details" id="successDetails"></div>
+
+      <div class="success-note" id="successNote">
+        <strong>📧 Confirmation email sent.</strong><br>
+        A temporary hold of RM <span id="successHold">100</span> has been placed on your card. This is not a charge — it secures your reservation and will be released automatically if not captured.
+      </div>
+
+      <div class="success-actions">
+        <button class="btn primary" onclick="goLanding()">Back to Home</button>
+        <a class="btn" href="tel:+60167611931">Need to Change? Call Us</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Waitlist Success (reuses step5 with different content) -->
+
+</div>
+
+<script>
+const MAKII_GIST = 'https://gist.githubusercontent.com/abigailmini/4f8c9f567fa8a13d002fd5a2b703e8ed/raw/mizu-api-url.txt';
+const FALLBACK_API = 'https://dam-attachments-inline-horizontal.trycloudflare.com';
+let API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.endsWith('.serveousercontent.com')) ? `${window.location.origin}` : FALLBACK_API;
+
+let selectedDate = null, selectedPax = null, selectedSession = null, selectedCourse = null;
+let guestCourses = [], availableCourses = [], availabilityData = null, blockedDates = [];
+let isWaitlist = false;
+let stripe = null, stripeElements = null, cardElement = null;
+
+// Add-ons data
+const ADDONS = [
+  { key: 'Extra Uni', price: 68 },
+  { key: 'Extra Otoro', price: 58 },
+  { key: 'Extra A5 Wagyu', price: 88 },
+  { key: 'Truffle Chawanmushi', price: 38 },
+  { key: 'Sake Pairing', price: 120 },
+  { key: 'Soft Drink Pairing', price: 30 }
+];
+let addonCounts = {}; // { 'Extra Uni': 0 }
+
+// ── Navigation ──
+function showStep(id) {
+  document.querySelectorAll('.step, .landing').forEach(el => { el.classList.remove('active'); if (el.classList.contains('landing')) el.style.display = 'none'; });
+  const el = document.getElementById(id);
+  if (id === 'landing') { el.style.display = 'flex'; }
+  else { el.classList.add('active'); }
+}
+
+function goLanding() {
+  selectedDate = null; selectedPax = null; selectedSession = null; selectedCourse = null;
+  guestCourses = []; isWaitlist = false;
+  document.getElementById('landing').style.display = 'flex';
+  document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+}
+
+function startReservation() { showStep('step1'); initDatePicker(); }
+function goStep1() { showStep('step1'); }
+function goStep2() { showStep('step2'); loadAvailability(); }
+function goStep2b() { showStep('step2b'); initPaxSelector(); loadCourses(); updateStep2bBtn(); }
+function goStep3() { showStep('step3'); updateStep3Btn(); renderGuestNamesInputs(); }
+
+function goStep4() {
+  const name = document.getElementById('guestName').value.trim();
+  const phone = document.getElementById('guestPhone').value.trim();
+  const email = document.getElementById('guestEmail').value.trim();
+  const error = document.getElementById('formError');
+  error.style.display = 'none';
+  if (!name || !phone || !email) { error.textContent = 'Please fill in all required fields.'; error.style.display = 'block'; return; }
+
+  // If waitlist, skip payment
+  if (isWaitlist) { submitWaitlist(); return; }
+
+  showStep('step4');
+  renderPaymentSummary();
+  mountCardElement();
+}
+
+function updateStep3Btn() {
+  const btn = document.getElementById('step3Next');
+  btn.textContent = isWaitlist ? 'Join Waitlist' : 'Continue to Payment';
+  const agreed = document.getElementById('tncAgree').checked;
+  btn.disabled = !agreed;
+}
+
+// ── Date Picker ──
+// ── Calendar ──
+let calViewDate = null; // current month being viewed
+let calMinDate = null;
+let calMaxDate = null;
+
+function initDatePicker() {
+  const today = new Date();
+  calMinDate = new Date(today); calMinDate.setDate(calMinDate.getDate() + 1); // tomorrow
+  calMaxDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // end of next month
+  if (!calViewDate) calViewDate = new Date(calMinDate.getFullYear(), calMinDate.getMonth(), 1);
+  renderCalendar();
+}
+
+function calNav(dir) {
+  calViewDate.setMonth(calViewDate.getMonth() + dir);
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  const monthLabel = document.getElementById('calMonth');
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dows = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const year = calViewDate.getFullYear(), month = calViewDate.getMonth();
+  monthLabel.textContent = `${months[month]} ${year}`;
+
+  // Nav button limits (max 2 months from now)
+  const minMonth = new Date(calMinDate.getFullYear(), calMinDate.getMonth(), 1);
+  const maxMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1); // next month
+  document.getElementById('calPrev').disabled = (year === minMonth.getFullYear() && month === minMonth.getMonth());
+  document.getElementById('calNext').disabled = (year === maxMonth.getFullYear() && month === maxMonth.getMonth());
+
+  grid.innerHTML = '';
+  // Day-of-week headers
+  dows.forEach(d => { const el = document.createElement('div'); el.className = 'cal-dow'; el.textContent = d; grid.appendChild(el); });
+
+  const firstDay = new Date(year, month, 1);
+  let startDow = firstDay.getDay(); // 0=Sun
+  startDow = startDow === 0 ? 6 : startDow - 1; // convert to Mon=0
+
+  // Empty cells before 1st
+  for (let i = 0; i < startDow; i++) { const el = document.createElement('div'); el.className = 'cal-day empty'; grid.appendChild(el); }
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d);
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    el.textContent = d;
+
+    const isPast = date <= today;
+    const isBlocked = blockedDates.includes(dateStr);
+    const isBeyond = date > calMaxDate;
+    const isToday = date.getTime() === today.getTime();
+
+    if (isToday) el.classList.add('today');
+    if (isPast || isBeyond) { el.classList.add('past'); }
+    else if (isBlocked) { el.classList.add('blocked'); }
+    else {
+      if (selectedDate === dateStr) el.classList.add('selected');
+      el.onclick = () => {
+        grid.querySelectorAll('.cal-day').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedDate = dateStr;
+        document.getElementById('step1Next').disabled = false;
+      };
+    }
+    grid.appendChild(el);
+  }
+}
+
+// ── Pax Selector ──
+function initPaxSelector() {
+  const container = document.getElementById('paxSelector');
+  container.innerHTML = '';
+  for (let i = 1; i <= 10; i++) {
+    const item = document.createElement('div');
+    item.className = 'pax-item' + (selectedPax === i ? ' selected' : '');
+    item.textContent = i;
+    item.onclick = () => {
+      document.querySelectorAll('.pax-item').forEach(el => el.classList.remove('selected'));
+      item.classList.add('selected');
+      selectedPax = i;
+      renderGuestCourses();
+      updateStep2bBtn();
+    };
+    container.appendChild(item);
+  }
+}
+
+function updateStep2bBtn() {
+  const total = Object.values(courseCounts).reduce((s, v) => s + v, 0);
+  const ready = selectedPax && total === selectedPax;
+  document.getElementById('step2bNext').disabled = !ready;
+}
+
+// ── Availability ──
+async function loadAvailability() {
+  const list = document.getElementById('sessionList');
+  const loading = document.getElementById('sessionsLoading');
+  const error = document.getElementById('sessionError');
+  list.innerHTML = ''; loading.style.display = 'block'; error.style.display = 'none';
+  document.getElementById('step2Next').disabled = true;
+  selectedSession = null;
+
+  try {
+    const res = await fetch(`${API_BASE}/availability?date=${selectedDate}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
+    availabilityData = await res.json();
+    loading.style.display = 'none';
+    if (availabilityData.blocked) { error.textContent = `Closed: ${availabilityData.reason}`; error.style.display = 'block'; return; }
+    availableCourses = availabilityData.courses || [];
+
+    availabilityData.sessions.forEach(s => {
+      const isFull = s.remaining <= 0;
+      const rem = s.remaining;
+      let seatClass = '', seatBadge = '';
+      if (isFull) {
+        seatClass = ' full'; seatBadge = '<div class="waitlist-tag">Fully Booked</div>';
+      } else if (rem <= 5) {
+        seatClass = ' seats-critical'; seatBadge = `<div class="seats-badge red">${rem} seats left</div>`;
+      } else if (rem <= 10) {
+        seatClass = ' seats-low'; seatBadge = `<div class="seats-badge yellow">${rem} seats left</div>`;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'session-card' + seatClass;
+      card.innerHTML = `
+        <div class="session-info"><h3>${s.name}</h3><div class="time">${formatTime(s.startTime)} — ${formatTime(s.endTime)}</div></div>
+        <div class="session-meta">${seatBadge}</div>
+      `;
+      if (!isFull) {
+        card.onclick = () => {
+          document.querySelectorAll('#sessionList .session-card').forEach(el => el.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedSession = s; isWaitlist = false;
+          document.getElementById('step2Next').disabled = false;
+          document.getElementById('step2Next').textContent = 'Continue';
+        };
+      } else {
+        card.onclick = () => {
+          document.querySelectorAll('#sessionList .session-card').forEach(el => el.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedSession = s; isWaitlist = true;
+          document.getElementById('step2Next').disabled = false;
+          document.getElementById('step2Next').textContent = 'Join Waitlist';
+        };
+      }
+      list.appendChild(card);
+    });
+  } catch (e) {
+    loading.style.display = 'none';
+    error.innerHTML = 'Unable to load availability. <a href="#" onclick="loadAvailability();return false" style="color:var(--gold)">Tap to retry</a>';
+    error.style.display = 'block';
+  }
+}
+
+function loadCourses() { renderGuestCourses(); }
+
+let courseCounts = {}; // { "Mirin Course": 2, "Kirin Course": 1 }
+
+function renderGuestCourses() {
+  const section = document.getElementById('courseSection');
+  const list = document.getElementById('courseList');
+  list.innerHTML = ''; selectedCourse = null;
+  courseCounts = {};
+
+  if (!selectedPax || !availableCourses.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  availableCourses.forEach(c => { courseCounts[c.name] = 0; });
+
+  availableCourses.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'course-card';
+    card.id = `course-${c.name.replace(/\s/g,'-')}`;
+    card.innerHTML = `
+      <div class="course-info">
+        <h3>${c.name}</h3>
+        <div class="course-price">RM ${c.price} / pax</div>
+      </div>
+      <div class="course-counter">
+        <button class="counter-btn" onclick="adjustCourse('${c.name}', -1)">−</button>
+        <span class="counter-val" id="cval-${c.name.replace(/\s/g,'-')}">0</span>
+        <button class="counter-btn" onclick="adjustCourse('${c.name}', 1)">+</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+  // init addons UI
+  initAddonsUI();
+  updateCourseUI();
+}
+
+function adjustCourse(name, delta) {
+  const current = courseCounts[name] || 0;
+  const totalOthers = Object.values(courseCounts).reduce((s, v) => s + v, 0) - current;
+  const newVal = current + delta;
+  if (newVal < 0 || totalOthers + newVal > selectedPax) return;
+  courseCounts[name] = newVal;
+  updateCourseUI();
+  updateStep2bBtn();
+}
+
+function updateCourseUI() {
+  const total = Object.values(courseCounts).reduce((s, v) => s + v, 0);
+  const remaining = selectedPax - total;
+  const remEl = document.getElementById('courseRemaining');
+
+  availableCourses.forEach(c => {
+    const id = c.name.replace(/\s/g,'-');
+    const valEl = document.getElementById(`cval-${id}`);
+    const cardEl = document.getElementById(`course-${id}`);
+    if (valEl) valEl.textContent = courseCounts[c.name] || 0;
+    if (cardEl) {
+      cardEl.classList.toggle('has-count', (courseCounts[c.name] || 0) > 0);
+    }
+  });
+
+  if (remaining > 0) {
+    remEl.textContent = `${remaining} more ${remaining === 1 ? 'guest' : 'guests'} to assign`;
+    remEl.className = 'course-remaining';
+  } else if (remaining === 0) {
+    remEl.textContent = 'All guests assigned ✓';
+    remEl.className = 'course-remaining';
+    remEl.style.color = 'var(--gold)';
+  } else {
+    remEl.textContent = `Too many assigned (${total}/${selectedPax})`;
+    remEl.className = 'course-remaining over';
+  }
+
+  // Build guestCourses array + selectedCourse string from counts
+  guestCourses = [];
+  Object.entries(courseCounts).forEach(([name, count]) => {
+    for (let i = 0; i < count; i++) guestCourses.push(name);
+  });
+  selectedCourse = total === selectedPax ? guestCourses.join(', ') : null;
+}
+
+// ── Add-ons UI ──
+function initAddonsUI() {
+  const container = document.getElementById('addonsList');
+  container.innerHTML = '';
+  addonCounts = {};
+  ADDONS.forEach(a => { addonCounts[a.key] = 0; const id = `addon-${a.key.replace(/\s/g,'-')}`;
+    const card = document.createElement('div'); card.className = 'addon-card'; card.id = id;
+    card.innerHTML = `
+      <div class="addon-info">
+        <div class="addon-name">${a.key}</div>
+        <div class="addon-price">RM ${a.price}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="counter-btn" onclick="adjustAddon('${a.key}', -1)">−</button>
+        <div class="counter-val" id="${id}-val">0</div>
+        <button class="counter-btn" onclick="adjustAddon('${a.key}', 1)">+</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function adjustAddon(name, delta) {
+  const cur = addonCounts[name] || 0;
+  const n = cur + delta;
+  if (n < 0) return;
+  addonCounts[name] = n;
+  const id = `addon-${name.replace(/\s/g,'-')}-val`;
+  const el = document.getElementById(id);
+  if (el) el.textContent = n;
+}
+
+// ── Guest Names Inputs ──
+function renderGuestNamesInputs() {
+  const container = document.getElementById('guestNamesList');
+  container.innerHTML = '';
+  if (!selectedPax) return;
+  // Single combined field for guest names (comma or newline separated)
+  const div = document.createElement('div'); div.className = 'form-group';
+  div.innerHTML = `
+    <label>Guest Names (one field) — list names separated by commas</label>
+    <textarea id="guestNamesCombined" placeholder="e.g. Alice, Bob, Charlie" rows="3"></textarea>
+    <div style="font-size:0.78rem;color:var(--text-dim);margin-top:6px">You can enter all guest names in a single field. If left blank, we'll only record the booker name.</div>
+  `;
+  container.appendChild(div);
+  // auto-fill first guest into combined field
+  syncGuest1();
+}
+
+function syncGuest1() {
+  const v = document.getElementById('guestName').value || '';
+  const el = document.getElementById('guestNamesCombined'); if (el) {
+    const existing = el.value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
+    if (existing.length === 0) el.value = v; else { existing[0]=v; el.value = existing.join(', '); }
+  }
+}
+
+// ── Payment Summary ──
+function renderPaymentSummary() {
+  const holdTotal = selectedPax * 100;
+  document.getElementById('holdAmount').textContent = holdTotal;
+  const coursePrice = (name) => (availableCourses.find(x => x.name === name) || {}).price || 0;
+  // addons total and lines
+  const addonLines = Object.entries(addonCounts).filter(([,v])=>v>0).map(([name,qty]) => {
+    const price = (ADDONS.find(a=>a.key===name)||{}).price||0;
+    return `<div class="row"><span class="label">${name}</span><span>×${qty} · RM ${price} each</span></div>`;
+  }).join('');
+
+  document.getElementById('paymentSummary').innerHTML = `
+    <div class="summary-title">Reservation Summary</div>
+    <div class="row"><span class="label">Date</span><span>${formatDisplayDate(selectedDate)}</span></div>
+    <div class="row"><span class="label">Session</span><span>${selectedSession.name} · ${formatTime(selectedSession.startTime)}</span></div>
+    <div class="row"><span class="label">Guests</span><span>${selectedPax}</span></div>
+    ${Object.entries(courseCounts).filter(([,v])=>v>0).map(([name,count]) => `<div class="row"><span class="label">${name}</span><span>×${count} · RM ${coursePrice(name)} each</span></div>`).join('')}
+    ${addonLines}
+    <div class="row total"><span class="label">Card Hold (refundable)</span><span>RM ${holdTotal}</span></div>
+  `;
+}
+
+function mountCardElement() {
+  if (!stripe || cardElement) return;
+  stripeElements = stripe.elements();
+  cardElement = stripeElements.create('card', {
+    hidePostalCode: true,
+    style: {
+      base: { color: '#E8E8E8', fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: '300',
+        '::placeholder': { color: '#666' }, iconColor: '#C9A96E' },
+      invalid: { color: '#C97A4E', iconColor: '#C97A4E' }
+    }
+  });
+  cardElement.mount('#card-element');
+  cardElement.on('focus', () => document.getElementById('cardWrapper').classList.add('focused'));
+  cardElement.on('blur', () => document.getElementById('cardWrapper').classList.remove('focused'));
+}
+
+// ── Process Payment ──
+async function processPayment() {
+  const btn = document.getElementById('payBtn');
+  const error = document.getElementById('cardError');
+  error.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Authorizing...';
+
+  try {
+    const name = document.getElementById('guestName').value.trim();
+    const phone = document.getElementById('guestPhone').value.trim();
+    const email = document.getElementById('guestEmail').value.trim();
+    const notes = document.getElementById('guestNotes').value.trim();
+    const allergy = (document.getElementById('guestAllergy') && document.getElementById('guestAllergy').value.trim()) || '';
+
+    // Create payment method
+    const pmResult = await stripe.createPaymentMethod({
+      type: 'card', card: cardElement,
+      billing_details: { name, email, phone }
+    });
+    if (pmResult.error) { throw new Error(pmResult.error.message); }
+
+    // Prepare addons and guestNames
+    const addons = {};
+    Object.entries(addonCounts).forEach(([k,v])=>{ if (v>0) addons[k]=v; });
+    let guestNames = [];
+    const combined = (document.getElementById('guestNamesCombined') && document.getElementById('guestNamesCombined').value) || '';
+    guestNames = combined.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean).slice(0, selectedPax || 0);
+    // pad with empty strings to match pax if needed
+    while (guestNames.length < (selectedPax||0)) guestNames.push('');
+
+    // Submit booking with payment
+    const res = await fetch(`${API_BASE}/book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
+      body: JSON.stringify({
+        date: selectedDate, session: selectedSession.name, course: selectedCourse,
+        name, phone, email, pax: selectedPax, notes, allergy,
+        createHold: true, payment_method: pmResult.paymentMethod.id,
+        addons: JSON.stringify(addons), guestNames: JSON.stringify(guestNames),
+        return_url: window.location.origin + window.location.pathname + '?payment_status=complete'
+      })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Handle 3D Secure if needed
+    if (data.requires_action && data.client_secret) {
+      const result = await stripe.handleCardAction(data.client_secret);
+      if (result.error) throw new Error(result.error.message);
+      // 3DS passed — the PaymentIntent is now confirmed server-side
+    }
+
+    showSuccess(data);
+  } catch (e) {
+    error.textContent = e.message || 'Payment failed. Please try again.';
+    error.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Authorize & Confirm';
+  }
+}
+
+// ── Waitlist Submit ──
+async function submitWaitlist() {
+  const name = document.getElementById('guestName').value.trim();
+  const phone = document.getElementById('guestPhone').value.trim();
+  const email = document.getElementById('guestEmail').value.trim();
+  const notes = document.getElementById('guestNotes').value.trim();
+  const allergy = (document.getElementById('guestAllergy') && document.getElementById('guestAllergy').value.trim()) || '';
+  const btn = document.getElementById('step3Next');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+
+  // Prepare addons and guestNames
+  const addons = {};
+  Object.entries(addonCounts).forEach(([k,v])=>{ if (v>0) addons[k]=v; });
+  let guestNames = [];
+  const combined = (document.getElementById('guestNamesCombined') && document.getElementById('guestNamesCombined').value) || '';
+  guestNames = combined.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean).slice(0, selectedPax || 0);
+  while (guestNames.length < (selectedPax||0)) guestNames.push('');
+
+  try {
+    const res = await fetch(`${API_BASE}/waitlist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
+      body: JSON.stringify({ date: selectedDate, session: selectedSession.name, course: selectedCourse, name, phone, email, pax: selectedPax, notes, allergy, addons: JSON.stringify(addons), guestNames: JSON.stringify(guestNames) })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showWaitlistSuccess();
+  } catch (e) {
+    const error = document.getElementById('formError');
+    error.textContent = e.message || 'Something went wrong.'; error.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Join Waitlist';
+  }
+}
+
+// ── Success Pages ──
+function showSuccess(data) {
+  const holdTotal = selectedPax * 100;
+  const coursePrice = (name) => (availableCourses.find(x => x.name === name) || {}).price || 0;
+  const gName = document.getElementById('guestName').value.trim();
+
+  // Build addons display
+  const addonLines = Object.entries(addonCounts).filter(([,v])=>v>0).map(([name,qty]) => {
+    const price = (ADDONS.find(a=>a.key===name)||{}).price||0;
+    return `<div class="detail-row"><span class="label">${name}</span><span class="value">×${qty} · RM ${price} each</span></div>`;
+  }).join('');
+
+  // guest names display
+  let guestNamesHTML = '';
+  const gnames = [];
+  for (let i=1;i<= (selectedPax||0); i++) {
+    const g = document.getElementById(`guestName-${i}`);
+    if (g && g.value.trim()) { gnames.push(g.value.trim()); }
+  }
+  if (gnames.length) {
+    guestNamesHTML = `<div class="detail-row"><span class="label">Guest Names</span><span class="value">${gnames.map((x,i)=>`${i+1}. ${x}`).join('<br>')}</span></div>`;
+  }
+
+  document.getElementById('successSub').innerHTML = `Thank you, ${gName}.<br>We look forward to welcoming you.`;
+  document.getElementById('successHold').textContent = holdTotal;
+  document.getElementById('successDetails').innerHTML = `
+    <div class="detail-row"><span class="label">Date</span><span class="value">${formatDisplayDate(selectedDate)}</span></div>
+    <div class="detail-row"><span class="label">Session</span><span class="value">${selectedSession.name}<br>${formatTime(selectedSession.startTime)} — ${formatTime(selectedSession.endTime)}</span></div>
+    <div class="detail-row"><span class="label">Guests</span><span class="value">${selectedPax}</span></div>
+    ${guestNamesHTML}
+    ${Object.entries(courseCounts).filter(([,v])=>v>0).map(([name,count]) => `<div class="detail-row"><span class="label">${name}</span><span class="value">×${count} · RM ${coursePrice(name)} each</span></div>`).join('')}
+    ${addonLines}
+    <div class="detail-row"><span class="label">Card Hold</span><span class="value" style="color:var(--gold)">RM ${holdTotal}</span></div>
+  `;
+  document.getElementById('successNote').style.display = 'block';
+  document.querySelector('#step5 h2').textContent = 'Reservation Confirmed';
+  showStep('step5');
+}
+
+function showWaitlistSuccess() {
+  const name = document.getElementById('guestName').value.trim();
+  document.querySelector('#step5 .success-icon svg polyline').setAttribute('points', '');
+  document.querySelector('#step5 .success-icon').innerHTML = '<span style="font-size:2rem">⏳</span>';
+  document.querySelector('#step5 h2').textContent = 'You\'re on the Waitlist';
+  document.getElementById('successSub').innerHTML = `Thank you, ${name}.<br>We\'ll contact you as soon as a spot opens up.`;
+  document.getElementById('successDetails').innerHTML = `
+    <div class="detail-row"><span class="label">Date</span><span class="value">${formatDisplayDate(selectedDate)}</span></div>
+    <div class="detail-row"><span class="label">Session</span><span class="value">${selectedSession.name} · ${formatTime(selectedSession.startTime)}</span></div>
+    <div class="detail-row"><span class="label">Guests</span><span class="value">${selectedPax}</span></div>
+  `;
+  document.getElementById('successNote').innerHTML = '<strong>📋 Waitlist confirmed.</strong><br>We\'ll reach out via phone or email if a spot becomes available.';
+  showStep('step5');
+}
+
+function formatTime(t) {
+  const [h, m] = t.split(':').map(Number);
+  return `${h % 12 || 12}:${m.toString().padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+function formatDisplayDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+// ── Init ──
+(async function init() {
+  if (window.location.hostname.endsWith('.github.io')) {
+    try {
+      const r = await fetch(MAKII_GIST + '?t=' + Date.now());
+      const url = (await r.text()).trim();
+      if (url.startsWith('https://')) API_BASE = url;
+    } catch(e) {}
+  }
+  console.log('API_BASE:', API_BASE);
+
+  try {
+    const res = await fetch(`${API_BASE}/config`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
+    const config = await res.json();
+    blockedDates = (config.blocked || []).map(b => b['Blocked Date']);
+  } catch(e) {}
+
+  try {
+    const r = await fetch(`${API_BASE}/stripe-key`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
+    const info = await r.json();
+    if (info.publishableKey) {
+      const s = document.createElement('script');
+      s.src = 'https://js.stripe.com/v3/';
+      document.head.appendChild(s);
+      s.onload = () => { stripe = Stripe(info.publishableKey); };
+    }
+  } catch(e) {}
+
+  // Handle 3D Secure redirect return
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('payment_status') === 'complete' || urlParams.get('redirect_status')) {
+    const piId = urlParams.get('payment_intent');
+    const status = urlParams.get('redirect_status') || 'succeeded';
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+    // Show success page
+    document.getElementById('successSub').innerHTML = 'Your reservation has been confirmed.<br>We look forward to welcoming you.';
+    document.getElementById('successDetails').innerHTML = `
+      <div class="detail-row"><span class="label">Status</span><span class="value" style="color:var(--gold)">${status === 'succeeded' ? 'Confirmed ✓' : 'Processing'}</span></div>
+      <div class="detail-row"><span class="label">Reference</span><span class="value" style="font-size:0.75rem">${piId || 'N/A'}</span></div>
+    `;
+    document.getElementById('successNote').innerHTML = '<strong>📧 Confirmation details sent to your email.</strong><br>A temporary card hold has been placed to secure your reservation.';
+    document.getElementById('successHold').textContent = (selectedPax || 1) * 100;
+    document.querySelector('#step5 h2').textContent = 'Reservation Confirmed';
+    showStep('step5');
+  }
+})();
+</script>
+</body>
+</html>
