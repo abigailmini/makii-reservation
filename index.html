@@ -820,7 +820,7 @@ function renderGuestCourses() {
       <div class="course-info" style="flex:1">
         <div style="display:flex;align-items:center;gap:6px">
           <h3>${c.name}</h3>
-          ${hasDesc ? `<span class="course-desc-arrow" style="font-size:0.7rem;color:var(--text-dim);cursor:pointer;transition:transform 200ms" onclick="event.stopPropagation();toggleCourseDesc('${c.name.replace(/\s/g,'-')}')">▸</span>` : ''}
+          ${hasDesc ? `<span class="course-desc-arrow" style="font-size:0.7rem;color:var(--text-dim);cursor:pointer;transition:transform 200ms">▸</span>` : ''}
         </div>
         <div class="course-price">RM ${c.price} / pax</div>
         ${hasDesc ? `<div id="cdesc-${c.name.replace(/\s/g,'-')}" style="display:none;font-size:0.78rem;color:var(--text-dim);white-space:pre-line;margin-top:8px;line-height:1.5;padding:8px 0;border-top:1px solid var(--border)">${c.description}</div>` : ''}
@@ -831,6 +831,18 @@ function renderGuestCourses() {
         <button class="counter-btn" onclick="adjustCourse('${c.name}', 1)">+</button>
       </div>
     `;
+    if (hasDesc) {
+      const id = c.name.replace(/\s/g,'-');
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.course-counter')) return;
+        toggleCourseDesc(id);
+      });
+      setTimeout(()=>{
+        const arrow = card.querySelector('.course-desc-arrow');
+        if (arrow) arrow.addEventListener('click', (ev)=>{ ev.stopPropagation(); toggleCourseDesc(c.name.replace(/\s/g,'-')); });
+      },0);
+    }
     list.appendChild(card);
   });
   // init addons UI
