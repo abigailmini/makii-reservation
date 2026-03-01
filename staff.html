@@ -282,7 +282,7 @@
 
 <script>
 const MAKII_GIST = 'https://gist.githubusercontent.com/abigailmini/2af892278a0127ba440140e2408547ad/raw/makii-api-url.txt';
-const FALLBACK_API = 'https://dam-attachments-inline-horizontal.trycloudflare.com';
+const FALLBACK_API = 'https://vector-gained-incorporated-rogers.trycloudflare.com';
 let API_BASE = (location.hostname === 'localhost' || location.hostname.endsWith('.trycloudflare.com')) ? location.origin : FALLBACK_API;
 // v2 cache bust
 
@@ -523,13 +523,11 @@ function copyEmail(e) { if (!e) return; navigator.clipboard && navigator.clipboa
 
 // Init
 (async () => {
-  if (location.hostname.endsWith('.github.io')) {
-    try {
-      const r = await fetch(MAKII_GIST + '?t=' + Date.now());
-      const url = (await r.text()).trim();
-      if (url.startsWith('https://')) API_BASE = url;
-    } catch(e) {}
-  }
+  try {
+    const r = await fetch(MAKII_GIST + '?t=' + Date.now());
+    const url = (await r.text()).trim();
+    if (url.startsWith('https://')) API_BASE = url;
+  } catch(e) {}
   updateDateLabel();
   loadData();
   // Auto-refresh every 60s
