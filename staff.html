@@ -8,10 +8,10 @@
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
-    --bg: #0C0A08; --card: #141210; --card-hover: #1A1714;
-    --gold: #C9A96E; --gold-dim: rgba(201,169,110,0.4);
-    --text: #E8E0D4; --dim: #7A7368; --border: rgba(201,169,110,0.1);
-    --green: #5B8A6A; --yellow: #C9A96E; --red: #B85450; --blue: #5B7EA6;
+    --bg: #F5EDE0; --card: #EDE4D4; --card-hover: #E8DCC8;
+    --gold: #8B7355; --gold-dim: rgba(139,115,85,0.4);
+    --text: #2C2418; --dim: #7A6F60; --border: rgba(139,115,85,0.15);
+    --green: #4A7A5A; --yellow: #8B7355; --red: #B85450; --blue: #5B7EA6;
   }
   body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-weight: 300; -webkit-font-smoothing: antialiased; }
 
@@ -27,7 +27,7 @@
   .header .date-nav button { background: none; border: 1px solid var(--border); color: var(--dim); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; transition: all 150ms; }
   .header .date-nav button:hover { border-color: var(--gold-dim); color: var(--gold); }
   .header .date-label { font-size: 0.85rem; color: var(--text); min-width: 140px; text-align: center; }
-  .header .today-tag { font-size: 0.6rem; background: var(--gold); color: var(--bg); padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.05em; }
+  .header .today-tag { font-size: 0.6rem; background: var(--gold); color: #F5EDE0; padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.05em; }
 
   .container { max-width: 720px; margin: 0 auto; padding: 16px; }
 
@@ -81,9 +81,9 @@
 
   .guest-tags { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
   .tag { font-size: 0.6rem; padding: 3px 7px; border-radius: 4px; font-weight: 500; letter-spacing: 0.03em; text-transform: uppercase; }
-  .tag.allergy { background: rgba(184,84,80,0.15); color: var(--red); border: 1px solid rgba(184,84,80,0.25); }
-  .tag.notes { background: rgba(91,126,166,0.12); color: var(--blue); border: 1px solid rgba(91,126,166,0.2); }
-  .tag.vip { background: rgba(201,169,110,0.12); color: var(--gold); border: 1px solid rgba(201,169,110,0.2); }
+  .tag.allergy { background: rgba(184,84,80,0.1); color: var(--red); border: 1px solid rgba(184,84,80,0.25); }
+  .tag.notes { background: rgba(91,126,166,0.1); color: var(--blue); border: 1px solid rgba(91,126,166,0.2); }
+  .tag.vip { background: rgba(139,115,85,0.1); color: var(--gold); border: 1px solid rgba(139,115,85,0.2); }
   .tag.paid { background: rgba(91,138,106,0.12); color: var(--green); border: 1px solid rgba(91,138,106,0.2); }
 
   /* Notes tooltip */
@@ -103,11 +103,11 @@
 
   /* Status badges */
   .status-badge { font-size:0.6rem; padding:3px 8px; border-radius:4px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; display:inline-block; margin-left:6px; vertical-align:middle; }
-  .status-confirmed { background:rgba(91,138,106,0.15); color:var(--green); border:1px solid rgba(91,138,106,0.25); }
-  .status-manual { background:rgba(91,126,166,0.12); color:var(--blue); border:1px solid rgba(91,126,166,0.2); }
-  .status-cancelled { background:rgba(184,84,80,0.15); color:var(--red); border:1px solid rgba(184,84,80,0.25); }
-  .status-postponed { background:rgba(201,169,110,0.12); color:var(--gold); border:1px solid rgba(201,169,110,0.2); }
-  .status-charged { background:rgba(184,84,80,0.2); color:var(--red); border:1px solid rgba(184,84,80,0.3); }
+  .status-confirmed { background:rgba(74,122,90,0.12); color:var(--green); border:1px solid rgba(91,138,106,0.25); }
+  .status-manual { background:rgba(91,126,166,0.1); color:var(--blue); border:1px solid rgba(91,126,166,0.2); }
+  .status-cancelled { background:rgba(184,84,80,0.1); color:var(--red); border:1px solid rgba(184,84,80,0.25); }
+  .status-postponed { background:rgba(139,115,85,0.1); color:var(--gold); border:1px solid rgba(139,115,85,0.2); }
+  .status-charged { background:rgba(184,84,80,0.12); color:var(--red); border:1px solid rgba(184,84,80,0.3); }
   .guest-row.cancelled { opacity:0.45; }
 
   /* Add manually button */
@@ -115,12 +115,12 @@
   .add-manual-btn:hover { border-color:var(--gold-dim); background:rgba(201,169,110,0.05); }
 
   /* Edit Modal */
-  .modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; padding:16px; }
+  .modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(44,36,24,0.5); z-index:100; align-items:center; justify-content:center; padding:16px; }
   .modal-overlay.show { display:flex; }
-  .modal { background:var(--card); border:1px solid var(--border); border-radius:14px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto; padding:20px; }
+  .modal { background:var(--bg); border:1px solid var(--border); border-radius:14px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto; padding:20px; }
   .modal h3 { color:var(--gold); font-size:1rem; font-weight:500; margin-bottom:16px; }
   .modal label { display:block; font-size:0.72rem; color:var(--dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; margin-top:12px; }
-  .modal input, .modal textarea { width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-family:inherit; font-size:0.85rem; outline:none; }
+  .modal input, .modal textarea { width:100%; background:rgba(255,255,255,0.7); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-family:inherit; font-size:0.85rem; outline:none; }
   .modal input:focus, .modal textarea:focus { border-color:var(--gold-dim); }
   .modal textarea { resize:vertical; min-height:60px; }
   .modal-actions { display:flex; gap:8px; margin-top:20px; flex-wrap:wrap; }
@@ -128,8 +128,8 @@
   .modal-actions button:hover { border-color:var(--gold-dim); }
   .modal-actions .btn-save { background:var(--gold); color:var(--bg); border-color:var(--gold); }
   .modal-actions .btn-save:hover { opacity:0.9; }
-  .modal-actions .btn-cancel-booking { background:rgba(184,84,80,0.15); color:var(--red); border-color:rgba(184,84,80,0.3); }
-  .modal-actions .btn-postpone { background:rgba(201,169,110,0.1); color:var(--gold); border-color:rgba(201,169,110,0.2); }
+  .modal-actions .btn-cancel-booking { background:rgba(184,84,80,0.1); color:var(--red); border-color:rgba(184,84,80,0.3); }
+  .modal-actions .btn-postpone { background:rgba(139,115,85,0.12); color:var(--gold); border-color:rgba(139,115,85,0.2); }
   .modal-actions .btn-charge { background:rgba(91,138,106,0.12); color:var(--green); border-color:rgba(91,138,106,0.2); }
   .modal-status { font-size:0.78rem; color:var(--dim); text-align:center; margin-top:12px; min-height:20px; }
 
@@ -194,7 +194,7 @@
         <button class="btn-cancel-booking" onclick="showCancelOptions()">❌ Cancel</button>
       </div>
       <!-- Cancel sub-options (hidden by default) -->
-      <div id="cancelOptions" style="display:none;margin-top:12px;padding:12px;background:rgba(184,84,80,0.05);border:1px solid rgba(184,84,80,0.15);border-radius:10px">
+      <div id="cancelOptions" style="display:none;margin-top:12px;padding:12px;background:rgba(184,84,80,0.05);border:1px solid rgba(184,84,80,0.1);border-radius:10px">
         <div style="font-size:0.72rem;color:var(--red);margin-bottom:10px;font-weight:500">Cancel & charge deposit?</div>
         <div class="modal-actions">
           <button class="btn-charge" onclick="doAction('charge100')" style="flex:1">💳 100%</button>
@@ -212,7 +212,7 @@
   <div class="modal">
     <h3>＋ Manual Booking</h3>
     <label>Session</label>
-    <select id="manualSession" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+    <select id="manualSession" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
       <option value="Lunch">Lunch (12:00 PM — 2:00 PM)</option>
       <option value="Dinner 1">Dinner 1 (6:00 PM — 8:00 PM)</option>
       <option value="Dinner 2">Dinner 2 (8:30 PM — 10:30 PM)</option>
@@ -226,7 +226,7 @@
     <label>Pax</label>
     <input type="number" id="manualPax" value="2" min="1" max="20">
     <label>Course</label>
-    <select id="manualCourse" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+    <select id="manualCourse" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
       <option value="Mirin Course">Mirin Course (RM499)</option>
       <option value="Seasonal Omakase (Winter Edition)">Seasonal Omakase - Winter (RM399)</option>
       <option value="Momiji Course">Momiji Course (RM299)</option>
@@ -251,20 +251,20 @@
     <h3>🔒 Lock Date / Session</h3>
     <div id="currentLocks" style="margin-bottom:14px"></div>
     <label>Scope</label>
-    <select id="lockScope" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+    <select id="lockScope" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
       <option value="all">Entire Day</option>
       <option value="Lunch">Lunch only</option>
       <option value="Dinner 1">Dinner 1 only</option>
       <option value="Dinner 2">Dinner 2 only</option>
     </select>
     <label style="margin-top:12px">Reason</label>
-    <select id="lockReason" onchange="document.getElementById('lockCustom').style.display=this.value==='Custom'?'block':'none'" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+    <select id="lockReason" onchange="document.getElementById('lockCustom').style.display=this.value==='Custom'?'block':'none'" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
       <option value="Off Day">Off Day</option>
       <option value="Holiday">Holiday</option>
       <option value="Private Event">Private Event</option>
       <option value="Custom">Custom...</option>
     </select>
-    <input type="text" id="lockCustom" placeholder="Custom reason" style="display:none;margin-top:8px;width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+    <input type="text" id="lockCustom" placeholder="Custom reason" style="display:none;margin-top:8px;width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
     <div class="modal-actions" style="margin-top:16px">
       <button class="btn-save" onclick="submitLock()">🔒 Lock</button>
       <button onclick="closeLockModal()">✕ Close</button>
@@ -425,7 +425,7 @@ function render(avail, reservations) {
           <div class="guest-info">
             <div class="guest-name">${r.name || 'Guest'} <span style="color:var(--dim);font-size:0.78rem">×${r.pax || 1}</span>
               <span class="status-badge ${statusClass}">${statusLabel}</span>
-              <button class="tag" style="cursor:pointer;background:rgba(201,169,110,0.1);color:var(--gold);border:1px solid rgba(201,169,110,0.2);margin-left:6px;vertical-align:middle" onclick="event.stopPropagation();openEdit(${r._idx})">✏️</button>
+              <button class="tag" style="cursor:pointer;background:rgba(139,115,85,0.12);color:var(--gold);border:1px solid rgba(139,115,85,0.2);margin-left:6px;vertical-align:middle" onclick="event.stopPropagation();openEdit(${r._idx})">✏️</button>
             </div>
             <div class="guest-detail-lines" style="margin-top:6px;font-size:0.75rem;line-height:1.6">
               <div style="color:var(--gold)">${courseDisplay || '—'}</div>
@@ -689,7 +689,7 @@ async function loadLocks() {
       el.innerHTML = '<div style="font-size:0.78rem;color:var(--dim)">No locks for this date</div>';
     } else {
       el.innerHTML = currentLocks.map(l =>
-        `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:6px;border:1px solid rgba(184,84,80,0.2);border-radius:8px;background:rgba(184,84,80,0.05)">
+        `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:6px;border:1px solid rgba(184,84,80,0.12);border-radius:8px;background:rgba(184,84,80,0.05)">
           <span style="font-size:0.8rem">🔒 ${l.session === 'all' ? 'Entire Day' : l.session} — ${l.reason}</span>
           <button onclick="doUnlock('${l.session}')" style="background:none;border:1px solid var(--border);color:var(--gold);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:0.72rem">🔓 Unlock</button>
         </div>`
