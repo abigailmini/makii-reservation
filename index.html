@@ -192,6 +192,26 @@
   .form-group textarea { resize: vertical; min-height: 88px; }
   .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(139,115,85,0.35); }
 
+  .occasion-chips { display: flex; gap: 10px; flex-wrap: wrap; }
+  .occasion-chip {
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.18);
+    color: var(--text-dim);
+    border-radius: 999px;
+    padding: 9px 14px;
+    font-size: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 160ms ease;
+  }
+  .occasion-chip:hover { border-color: rgba(181,143,85,0.55); color: var(--text); }
+  .occasion-chip.selected {
+    border-color: rgba(181,143,85,0.85);
+    background: linear-gradient(180deg, rgba(181,143,85,0.18), rgba(181,143,85,0.08));
+    color: var(--gold);
+    box-shadow: 0 8px 20px rgba(107,90,62,0.15);
+  }
+
   /* ── Terms & Conditions ── */
   .tnc-section { margin-top: 4px; }
   .tnc-toggle {
@@ -440,8 +460,16 @@
     <div id="guestNamesList" style="display:flex;flex-direction:column;gap:8px"></div>
 
     <div class="form-group">
+      <label>Special Occasion (optional)</label>
+      <div class="occasion-chips" id="specialOccasionChips">
+        <button type="button" class="occasion-chip" data-value="Birthday 🎂" onclick="toggleSpecialOccasion('Birthday 🎂', this)">🎂 Birthday</button>
+        <button type="button" class="occasion-chip" data-value="Anniversary 💕" onclick="toggleSpecialOccasion('Anniversary 💕', this)">💕 Anniversary</button>
+      </div>
+      <input type="hidden" id="specialOccasion" value="">
+    </div>
+    <div class="form-group">
       <label>Dietary / Special Request</label>
-      <textarea id="guestNotes" placeholder="e.g. No shellfish, birthday celebration, vegetarian, seating preference..."></textarea>
+      <textarea id="guestNotes" placeholder="e.g. No shellfish, no pork, halal"></textarea>
     </div>
     <!-- T&C -->
     <div class="tnc-section">
@@ -562,6 +590,7 @@ let API_BASE = (window.location.hostname === 'localhost' || window.location.host
 let selectedDate = null, selectedPax = null, selectedSession = null, selectedCourse = null;
 let guestCourses = [], availableCourses = [], availabilityData = null, blockedDates = [];
 let isWaitlist = false;
+let specialOccasionSelections = new Set();
 let stripe = null, stripeElements = null, cardElement = null;
 
 // Add-ons data
@@ -586,6 +615,7 @@ function showStep(id) {
 function goLanding() {
   selectedDate = null; selectedPax = null; selectedSession = null; selectedCourse = null;
   guestCourses = []; isWaitlist = false;
+  resetSpecialOccasionChips();
   document.getElementById('landing').style.display = 'flex';
   document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
 }
@@ -624,6 +654,25 @@ function updateStep3Btn() {
   btn.textContent = isWaitlist ? 'Join Waitlist' : 'Continue to Payment';
   const agreed = document.getElementById('tncAgree').checked;
   btn.disabled = !agreed;
+}
+
+function toggleSpecialOccasion(value, el) {
+  if (specialOccasionSelections.has(value)) {
+    specialOccasionSelections.delete(value);
+    el.classList.remove('selected');
+  } else {
+    specialOccasionSelections.add(value);
+    el.classList.add('selected');
+  }
+  const hidden = document.getElementById('specialOccasion');
+  if (hidden) hidden.value = Array.from(specialOccasionSelections).join(', ');
+}
+
+function resetSpecialOccasionChips() {
+  specialOccasionSelections = new Set();
+  document.querySelectorAll('.occasion-chip').forEach(chip => chip.classList.remove('selected'));
+  const hidden = document.getElementById('specialOccasion');
+  if (hidden) hidden.value = '';
 }
 
 // ── Date Picker ──
@@ -1050,6 +1099,7 @@ async function processPayment() {
     const phone = document.getElementById('guestPhone').value.trim();
     const email = document.getElementById('guestEmail').value.trim();
     const notes = document.getElementById('guestNotes').value.trim();
+    const specialOccasion = (document.getElementById('specialOccasion') && document.getElementById('specialOccasion').value) || '';
     const allergy = (document.getElementById('guestAllergy') && document.getElementById('guestAllergy').value.trim()) || '';
 
     // Create payment method
@@ -1074,7 +1124,7 @@ async function processPayment() {
       headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
       body: JSON.stringify({
         date: selectedDate, session: selectedSession.name, course: selectedCourse,
-        name, phone, email, pax: selectedPax, notes, allergy,
+        name, phone, email, pax: selectedPax, notes, special_occasion: specialOccasion, allergy,
         createHold: true, payment_method: pmResult.paymentMethod.id,
         addons: JSON.stringify(addons), guestNames: JSON.stringify(guestNames),
         return_url: window.location.origin + window.location.pathname + '?payment_status=complete'
@@ -1105,6 +1155,7 @@ async function submitWaitlist() {
   const phone = document.getElementById('guestPhone').value.trim();
   const email = document.getElementById('guestEmail').value.trim();
   const notes = document.getElementById('guestNotes').value.trim();
+  const specialOccasion = (document.getElementById('specialOccasion') && document.getElementById('specialOccasion').value) || '';
   const allergy = (document.getElementById('guestAllergy') && document.getElementById('guestAllergy').value.trim()) || '';
   const btn = document.getElementById('step3Next');
   btn.disabled = true; btn.textContent = 'Submitting...';
@@ -1122,7 +1173,7 @@ async function submitWaitlist() {
     const res = await fetch(`${API_BASE}/waitlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
-      body: JSON.stringify({ date: selectedDate, session: selectedSession.name, course: selectedCourse, name, phone, email, pax: selectedPax, notes, allergy, addons: JSON.stringify(addons), guestNames: JSON.stringify(guestNames) })
+      body: JSON.stringify({ date: selectedDate, session: selectedSession.name, course: selectedCourse, name, phone, email, pax: selectedPax, notes, special_occasion: specialOccasion, allergy, addons: JSON.stringify(addons), guestNames: JSON.stringify(guestNames) })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);

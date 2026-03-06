@@ -1,0 +1,739 @@
+require('dotenv').config();
+const http = require('http');
+const { Pool } = require('pg');
+const { Resend } = require('resend');
+
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  try { stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); }
+  catch (e) { console.warn('Stripe not loaded:', e.message); }
+}
+
+const PORT = process.env.PORT || 3458;
+const pool = new Pool({
+  host: process.env.PG_HOST || process.env.PGHOST || 'localhost',
+  port: parseInt(process.env.PG_PORT || process.env.PGPORT) || 5432,
+  database: process.env.PG_DATABASE || process.env.PGDATABASE || 'makii_reservation',
+  user: process.env.PG_USER || process.env.PGUSER || 'makii_app',
+  password: process.env.PG_PASSWORD || process.env.PGPASSWORD,
+  max: 10
+});
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const EMAIL_FROM = process.env.RESEND_FROM || 'reservation@makiisushi.com';
+const EMAIL_REPLY_TO = process.env.RESEND_REPLY_TO || 'makiisushibar@gmail.com';
+const BRAND = {
+  bg: '#E8DCCA',
+  gold: '#6B5A3E',
+  dark: '#2C2418',
+};
+
+// ── Room Logic ──
+const MAIN_ROOM_MAX = 10;
+const COZY_ROOM_MAX = 5;
+const TOTAL_SESSION_MAX = 15;
+const CUSTOM_COURSES = ['Custom Selection'];
+
+// ── Helpers ──
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString()));
+    req.on('error', reject);
+  });
+}
+
+function cors(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Bypass-Tunnel-Reminder');
+  res.setHeader('Access-Control-Allow-Credentials', 'false');
+}
+
+function json(res, code, obj) {
+  res.writeHead(code, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(obj));
+}
+
+function parseUrl(url) {
+  const [path, qs] = url.split('?');
+  const params = {};
+  if (qs) qs.split('&').forEach(p => { const [k, v] = p.split('='); params[k] = decodeURIComponent(v || ''); });
+  return { path, params };
+}
+
+// ── Booking Cutoff ──
+function isSessionPastCutoff(date, sessionName) {
+  const cutoffHours = { 'Lunch': 10, 'Dinner 1': 16, 'Dinner 2': 16 };
+  const hour = cutoffHours[sessionName];
+  if (hour == null) return false;
+  const cutoff = new Date(`${date}T${String(hour).padStart(2,'0')}:00:00+08:00`);
+  return new Date() >= cutoff;
+}
+
+// ── DB Query Helpers ──
+async function q(text, params) { return pool.query(text, params); }
+async function qRows(text, params) { return (await pool.query(text, params)).rows; }
+async function qOne(text, params) { const r = await pool.query(text, params); return r.rows[0] || null; }
+
+
+async function createStaffNotification(type, title, message, metadata = {}) {
+  try {
+    await q(
+      'INSERT INTO notifications (type, title, message, metadata, read, created_at) VALUES ($1,$2,$3,$4,false,NOW())',
+      [type, title, message, JSON.stringify(metadata || {})]
+    );
+  } catch (e) {
+    console.error('[NOTIFICATION] create failed:', e.message);
+  }
+}
+
+function formatReservationDate(dateStr) {
+  try {
+    const d = new Date(`${dateStr}T12:00:00+08:00`);
+    return new Intl.DateTimeFormat('en-MY', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Kuala_Lumpur'
+    }).format(d);
+  } catch (_) {
+    return dateStr;
+  }
+}
+
+function reservationEmailHtml(kind, booking) {
+  const title = kind === 'reminder' ? 'Reservation Reminder' : 'Reservation Confirmed';
+  const intro = kind === 'reminder'
+    ? 'This is a friendly reminder that your reservation is tomorrow. We look forward to seeing you.'
+    : 'We look forward to welcoming you for an unforgettable evening.';
+
+  const sessionTime = booking.sessionTime || booking.session_time || null;
+  const sessionDisplay = sessionTime
+    ? `${booking.session || '-'} (${sessionTime})`
+    : booking.session || '-';
+  const paxDisplay = booking.pax ? `${booking.pax} pax` : '-';
+  const courseDisplay = booking.course || '-';
+  const depositAmount = booking.depositAmount ?? booking.deposit_amount ?? booking.deposit ?? (booking.pax ? booking.pax * 100 : null);
+  const depositDisplay = depositAmount === null || depositAmount === undefined ? '-' : `RM${Number(depositAmount).toLocaleString('en-MY')}`;
+
+  const rows = `
+<tr><td style="padding:20px 0;color:#A89880;font-size:11px;letter-spacing:2px;text-transform:uppercase;width:120px;vertical-align:top">Date</td><td style="padding:20px 0;color:#2C2418;font-size:15px;text-align:right">${formatReservationDate(booking.date)}</td></tr>
+<tr><td colspan="2" style="border-top:1px solid #F0EAE2"></td></tr>
+<tr><td style="padding:20px 0;color:#A89880;font-size:11px;letter-spacing:2px;text-transform:uppercase;width:120px;vertical-align:top">Session</td><td style="padding:20px 0;color:#2C2418;font-size:15px;text-align:right">${sessionDisplay}</td></tr>
+<tr><td colspan="2" style="border-top:1px solid #F0EAE2"></td></tr>
+<tr><td style="padding:20px 0;color:#A89880;font-size:11px;letter-spacing:2px;text-transform:uppercase;width:120px;vertical-align:top">Guests</td><td style="padding:20px 0;color:#2C2418;font-size:15px;text-align:right">${paxDisplay}</td></tr>
+<tr><td colspan="2" style="border-top:1px solid #F0EAE2"></td></tr>
+<tr><td style="padding:20px 0;color:#A89880;font-size:11px;letter-spacing:2px;text-transform:uppercase;width:120px;vertical-align:top">Course</td><td style="padding:20px 0;color:#2C2418;font-size:15px;text-align:right">${courseDisplay}</td></tr>
+<tr><td colspan="2" style="border-top:1px solid #F0EAE2"></td></tr>
+<tr><td style="padding:20px 0;color:#A89880;font-size:11px;letter-spacing:2px;text-transform:uppercase;width:120px;vertical-align:top">Deposit</td><td style="padding:20px 0;color:#2C2418;font-size:15px;text-align:right">${depositDisplay}</td></tr>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body style="margin:0;padding:0;background:#F5EDE3;font-family:Georgia,Times,serif"><table width="100%" cellpadding="0" cellspacing="0" style="background:#F5EDE3;padding:32px 16px"><tr><td align="center"><table width="540" cellpadding="0" cellspacing="0" style="max-width:540px;width:100%;background:#FFFBF6;border-radius:8px;overflow:hidden"><tr><td style="background:#2C2418;padding:48px 40px;text-align:center"><img src="https://makiisushi.com/reservation/images/logo-email.png" width="260" alt="Fusion Omakase by Makii Sushi" style="display:block;margin:0 auto;width:260px;height:auto"></td></tr><tr><td style="padding:44px 48px 12px;text-align:center"><p style="margin:0;font-size:11px;letter-spacing:3px;color:#A89880;text-transform:uppercase">${title}</p></td></tr><tr><td style="padding:24px 48px 36px;text-align:center"><p style="margin:0;font-size:16px;line-height:1.8;color:#3D3225">${intro}</p></td></tr><tr><td style="padding:0 48px"><table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #E5DDD2">${rows}</table></td></tr><tr><td style="padding:36px 48px 40px;text-align:center"><p style="margin:0 0 6px;font-size:13px;color:#3D3225;font-weight:bold">Fusion Omakase by Makii Sushi</p><p style="margin:0;font-size:13px;line-height:1.8;color:#8A7A64">E2-0-21, Jalan 1/152, Taman OUG Parklane<br>Kuala Lumpur 58200</p><p style="margin:12px 0 0;font-size:13px;color:#8A7A64">+60 16-761 1931 · makiisushibar@gmail.com</p></td></tr><tr><td style="background:#2C2418;padding:18px 40px;text-align:center"><p style="margin:0;font-size:10px;letter-spacing:1px;color:#D4C4A8">For changes or cancellations, please contact us at least 24 hours in advance.</p></td></tr></table></td></tr></table></body></html>`;
+}
+
+async function sendReservationEmail(kind, booking) {
+  if (!resend) {
+    console.warn('[EMAIL] Resend not configured; skipped', kind, booking?.email);
+    return { ok: false, reason: 'resend_not_configured' };
+  }
+  if (!booking?.email) return { ok: false, reason: 'missing_email' };
+
+  const subject = kind === 'reminder'
+    ? `Reminder: Your Fusion Omakase reservation on ${booking.date}`
+    : `Reservation Confirmed: Fusion Omakase on ${booking.date}`;
+
+  try {
+    const rsp = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: booking.email,
+      replyTo: EMAIL_REPLY_TO,
+      subject,
+      html: reservationEmailHtml(kind, booking),
+    });
+    const msgId = rsp?.data?.id || null;
+    console.log(`[EMAIL] ${kind} sent to ${booking.email} (${msgId || 'no-id'})`);
+    return { ok: true, messageId: msgId };
+  } catch (e) {
+    console.error(`[EMAIL] ${kind} failed for ${booking.email}:`, e.message);
+    return { ok: false, reason: e.message };
+  }
+}
+
+async function notifyCustomer(type, booking) {
+  if (type !== 'booking-confirmation') {
+    console.log(`[CUSTOMER NOTIFY] ${type}: ${booking.name} - ${booking.email} - ${booking.phone}`);
+    return;
+  }
+
+  const sent = await sendReservationEmail('confirmation', booking);
+  if (sent.ok && booking.id) {
+    await q(
+      'UPDATE reservations SET confirmation_sent_at = NOW(), confirmation_message_id = $1 WHERE id = $2',
+      [sent.messageId, booking.id]
+    );
+  }
+}
+
+async function scheduleFeedbackSurvey(booking) {
+  // TODO: trigger feedback survey X hours after dinner
+  console.log(`[CUSTOMER NOTIFY] feedback-survey-placeholder: ${booking.name} - ${booking.email} - ${booking.phone}`);
+}
+
+// ── Config ──
+async function getConfig() {
+  const sessions = (await qRows("SELECT name, start_time, end_time FROM sessions"))
+    .map(s => ({ 'Session Name': s.name, 'Start Time': s.start_time, 'End Time': s.end_time, 'Status': 'active' }));
+  const blocked = (await qRows('SELECT date, reason FROM blocked_dates'))
+    .map(b => ({ 'Blocked Date': b.date, 'Reason': b.reason }));
+  const courses = (await qRows("SELECT id, course, price, description, start_date, end_date FROM config WHERE status='active'"))
+    .map(c => ({ 'Course': c.course, 'Price (RM)': c.price, 'Status': 'active' }));
+  return { sessions, blocked, courses };
+}
+
+// ── Locked ──
+async function getLockedEntries(date) {
+  return (await qRows('SELECT * FROM locked WHERE date = $1', [date]))
+    .map(l => ({ Date: l.date, Session: l.session, Reason: l.reason, 'Locked By': l.locked_by, 'Locked At': l.locked_at }));
+}
+
+function isSessionLocked(locks, sessionName) {
+  return locks.some(l => l.Session === 'all' || l.Session === sessionName);
+}
+
+// ── Availability ──
+async function getAvailability(date) {
+  const config = await getConfig();
+  const blockedEntry = config.blocked.find(b => b['Blocked Date'] === date);
+  if (blockedEntry) return { date, blocked: true, reason: blockedEntry['Reason'] || 'Blocked', sessions: [] };
+
+  const locks = await getLockedEntries(date);
+  const reservations = await qRows("SELECT * FROM reservations WHERE date = $1 AND status IN ('confirmed', 'manual')", [date]);
+
+  const sessions = config.sessions.map(s => {
+    const locked = isSessionLocked(locks, s['Session Name']);
+    const pastCutoff = isSessionPastCutoff(date, s['Session Name']);
+    const booked = reservations.filter(r => r.session === s['Session Name']);
+    const totalPax = booked.reduce((sum, r) => sum + (r.pax || 0), 0);
+    const maxPax = TOTAL_SESSION_MAX;
+    let mainUsed = 0, cozyUsed = 0;
+    booked.forEach(r => { const p = r.pax || 0; if (CUSTOM_COURSES.includes(r.course)) cozyUsed += p; else mainUsed += p; });
+    const closed = locked || pastCutoff;
+    return {
+      name: s['Session Name'], startTime: s['Start Time'], endTime: s['End Time'],
+      maxPax, bookedPax: totalPax,
+      remaining: closed ? 0 : Math.max(0, maxPax - totalPax),
+      available: closed ? false : totalPax < maxPax,
+      locked: closed,
+      mainRoom: { used: mainUsed, max: MAIN_ROOM_MAX },
+      cozyRoom: { used: cozyUsed, max: COZY_ROOM_MAX }
+    };
+  });
+
+  const courseRows = await qRows("SELECT id, course, price, description, start_date, end_date FROM config WHERE status='active' AND (start_date IS NULL OR start_date <= $1) AND (end_date IS NULL OR end_date >= $2)", [date, date]);
+  const courses = courseRows.map(c => ({ name: c.course, price: c.price, description: c.description || '' }));
+
+  const addonRows = await qRows("SELECT id, name, price, description, start_date, end_date FROM addons WHERE status='active' AND (start_date IS NULL OR start_date <= $1) AND (end_date IS NULL OR end_date >= $2)", [date, date]);
+  const addons = addonRows.map(a => ({ name: a.name, price: a.price, description: a.description || '' }));
+
+  return { date, blocked: false, sessions, courses, addons };
+}
+
+// ── Reserve ──
+async function makeReservation(data, createHold = false) {
+  const { date, session, course, name, phone, email, pax, notes, payment_method, return_url, guestNames, allergy, special_occasion } = data;
+  if (!date || !session || !course || !name || !phone || !email || !pax)
+    return { error: 'Missing required fields: date, session, course, name, phone, email, pax' };
+
+  const numPax = parseInt(pax);
+  if (isNaN(numPax) || numPax < 1 || numPax > 15) return { error: 'Pax must be between 1 and 15' };
+
+  const avail = await getAvailability(date);
+  if (avail.blocked) return { error: `Restaurant is closed on ${date}: ${avail.reason}` };
+
+  const sessionInfo = avail.sessions.find(s => s.name === session);
+  if (!sessionInfo) return { error: `Invalid session: ${session}` };
+  if (sessionInfo.locked) return { error: 'This session is currently fully booked.' };
+  if (isSessionPastCutoff(date, session)) return { error: 'Booking for this session has closed.' };
+
+  const now = new Date().toISOString();
+  let piId = '';
+  if (createHold) {
+    if (!stripe) return { error: 'Stripe not configured' };
+    try {
+      const intent = await stripe.paymentIntents.create({
+        amount: numPax * 10000, currency: 'myr', capture_method: 'manual',
+        payment_method_types: ['card'],
+        metadata: { restaurant: 'Fusion Omakase by Makii Sushi', date, session, course, name, email, phone }
+      });
+      if (payment_method) {
+        try {
+          await stripe.paymentIntents.confirm(intent.id, {
+            payment_method,
+            return_url: return_url || 'https://makiisushi.com/reservation/?payment_status=complete',
+          });
+        } catch (confirmErr) {
+          if (confirmErr.raw?.payment_intent?.status === 'requires_action')
+            return { requires_action: true, client_secret: confirmErr.raw.payment_intent.client_secret, payment_intent: intent.id };
+          throw confirmErr;
+        }
+      }
+      piId = intent.id;
+    } catch (e) {
+      console.error('Stripe error:', e.message);
+      await createStaffNotification(
+        'payment_failure',
+        '⚠️ Payment guarantee failed',
+        `${new Date().toLocaleString('en-MY')} · ${name} (${phone}) · ${session} ${date}`,
+        { date, session, course, name, phone, email, pax: numPax, error: e.message }
+      );
+      return { error: 'Payment authorization failed: ' + e.message };
+    }
+  }
+
+  const guestNamesStr = guestNames || '';
+  const allergyStr = allergy || '';
+  const specialOccasionStr = special_occasion || '';
+
+  if (sessionInfo.remaining >= numPax) {
+    const reservation = await qOne(
+      'INSERT INTO reservations (date, session, course, name, phone, email, pax, status, notes, created_at, payment_intent, guest_names, allergy, special_occasion, edited_at, edited_by, room) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id, date, session, course, name, phone, email, pax, created_at',
+      [date, session, course, name, phone, email, numPax, 'confirmed', notes || '', now, piId, guestNamesStr, allergyStr, specialOccasionStr, '', '', '']
+    );
+    console.log(`[BOOKING] ${name} (${numPax}pax) → ${course} @ ${session} on ${date} — CONFIRMED${piId ? (' (PI:'+piId+')') : ''}`);
+    await createStaffNotification(
+      'new_reservation',
+      '✅ New reservation confirmed',
+      `${new Date().toLocaleString('en-MY')} · ${date} ${session} · ${numPax} pax · ${course}`,
+      { date, session, course, name, phone, email, pax: numPax, payment_intent: piId }
+    );
+    await notifyCustomer('booking-confirmation', { ...reservation, payment_intent: piId });
+    await scheduleFeedbackSurvey({ ...reservation, payment_intent: piId });
+    return { status: 'confirmed', date, session, course, name, pax: numPax, payment_intent: piId };
+  } else {
+    await q('INSERT INTO waitlist (date, session, course, name, phone, email, pax, status, notes, created_at, payment_intent, guest_names, allergy, special_occasion) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+      [date, session, course, name, phone, email, numPax, 'waitlist', notes || '', now, piId, guestNamesStr, allergyStr, specialOccasionStr]);
+    console.log(`[BOOKING] ${name} (${numPax}pax) → ${session} on ${date} — WAITLISTED`);
+    return { status: 'waitlist', date, session, name, pax: numPax, message: 'Session is full. You have been added to the waitlist.', payment_intent: piId };
+  }
+}
+
+async function capturePaymentIntent(piId) { if (!stripe) throw new Error('Stripe not configured'); return stripe.paymentIntents.capture(piId); }
+async function cancelPaymentIntent(piId) { if (!stripe) throw new Error('Stripe not configured'); return stripe.paymentIntents.cancel(piId); }
+
+// ── Server ──
+const server = http.createServer(async (req, res) => {
+  cors(req, res);
+  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+  const { path, params } = parseUrl(req.url);
+
+  try {
+    if (path === '/health') return json(res, 200, { status: 'ok', service: 'makii-reservation-api' });
+
+    // ── Public Menu/Courses API ──
+    if (req.method === 'GET' && (path === '/api/menu' || path === '/api/courses')) {
+      const today = params.date || new Date().toISOString().slice(0, 10);
+      const rows = await qRows("SELECT id, course, price, description, start_date, end_date, status FROM config WHERE status='active' ORDER BY id ASC");
+
+      const mapped = rows.map(c => {
+        const startDate = c.start_date || null;
+        const endDate = c.end_date || null;
+        const currentlyActive = (!startDate || startDate <= today) && (!endDate || endDate >= today);
+        return {
+          id: c.id,
+          name: c.course,
+          price: Number(c.price || 0),
+          description: c.description || '',
+          is_active: currentlyActive,
+          start_date: startDate,
+          end_date: endDate
+        };
+      });
+
+      const courses = params.all === '1' ? mapped : mapped.filter(c => c.is_active);
+      return json(res, 200, { date: today, count: courses.length, courses });
+    }
+
+    // ── Courses CRUD ──
+    if (path === '/config/courses' && req.method === 'GET') {
+      const rows = params.date
+        ? await qRows("SELECT id, course, price, description, start_date, end_date FROM config WHERE status='active' AND (start_date IS NULL OR start_date <= $1) AND (end_date IS NULL OR end_date >= $2)", [params.date, params.date])
+        : await qRows("SELECT id, course, price, description, start_date, end_date FROM config WHERE status='active'");
+      return json(res, 200, rows.map(c => ({ id: c.id, name: c.course, price: c.price, description: c.description || '', start_date: c.start_date || null, end_date: c.end_date || null })));
+    }
+    if (req.method === 'POST' && path === '/config/courses') {
+      const body = JSON.parse(await readBody(req));
+      await q("INSERT INTO config (course, price, description, start_date, end_date, status) VALUES ($1,$2,$3,$4,$5,'active')", [body.name, body.price||0, body.description||'', body.start_date||null, body.end_date||null]);
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === 'PUT' && path.match(/^\/config\/courses\/\d+$/)) {
+      const id = path.split('/').pop();
+      const body = JSON.parse(await readBody(req));
+      await q("UPDATE config SET course=$1, price=$2, description=$3, start_date=$4, end_date=$5 WHERE id=$6", [body.name, body.price||0, body.description||'', body.start_date||null, body.end_date||null, id]);
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === 'DELETE' && path.startsWith('/config/courses/')) {
+      const id = path.split('/').pop();
+      await q("DELETE FROM config WHERE id=$1", [id]);
+      return json(res, 200, { ok: true });
+    }
+
+    // ── Addons CRUD ──
+    if (path === '/config/addons' && req.method === 'GET') {
+      const rows = params.date
+        ? await qRows("SELECT id, name, price, description, start_date, end_date FROM addons WHERE status='active' AND (start_date IS NULL OR start_date <= $1) AND (end_date IS NULL OR end_date >= $2)", [params.date, params.date])
+        : await qRows("SELECT id, name, price, description, start_date, end_date FROM addons WHERE status='active'");
+      return json(res, 200, rows.map(a => ({ id: a.id, name: a.name, price: a.price, description: a.description || '', start_date: a.start_date || null, end_date: a.end_date || null })));
+    }
+    if (req.method === 'POST' && path === '/config/addons') {
+      const body = JSON.parse(await readBody(req));
+      await q("INSERT INTO addons (name, price, description, start_date, end_date, status) VALUES ($1,$2,$3,$4,$5,'active')", [body.name, body.price||0, body.description||'', body.start_date||null, body.end_date||null]);
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === 'PUT' && path.match(/^\/config\/addons\/\d+$/)) {
+      const id = path.split('/').pop();
+      const body = JSON.parse(await readBody(req));
+      await q("UPDATE addons SET name=$1, price=$2, description=$3, start_date=$4, end_date=$5 WHERE id=$6", [body.name, body.price||0, body.description||'', body.start_date||null, body.end_date||null, id]);
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === 'DELETE' && path.startsWith('/config/addons/')) {
+      const id = path.split('/').pop();
+      await q("DELETE FROM addons WHERE id=$1", [id]);
+      return json(res, 200, { ok: true });
+    }
+
+    if (path === '/config') return json(res, 200, await getConfig());
+    if (path === '/stripe-key') return json(res, 200, { publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '' });
+
+    if ((path === '/availability' || path === '/slots') && params.date) {
+      return json(res, 200, await getAvailability(params.date));
+    }
+
+    if (req.method === 'POST' && path === '/book') {
+      const body = JSON.parse(await readBody(req));
+      const result = await makeReservation(body, !!body.createHold);
+      return json(res, result.error ? 400 : 200, result);
+    }
+
+    if (req.method === 'POST' && path === '/reserve') {
+      const body = JSON.parse(await readBody(req));
+      const result = await makeReservation(body, false);
+      return json(res, result.error ? 400 : 200, result);
+    }
+
+    if (req.method === 'POST' && path === '/waitlist') {
+      const body = JSON.parse(await readBody(req));
+      const now = new Date().toISOString();
+      await q('INSERT INTO waitlist (date, session, course, name, phone, email, pax, status, notes, created_at, payment_intent, guest_names, allergy, special_occasion) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+        [body.date, body.session, body.course||'', body.name, body.phone, body.email, parseInt(body.pax)||1, 'waitlist', body.notes||'', now, '', body.guestNames||'', body.allergy||'', body.special_occasion||'']);
+      return json(res, 200, { status: 'waitlist', message: 'Added to waitlist' });
+    }
+
+    if (path === '/reservations' && params.date) {
+      const rows = await qRows('SELECT * FROM reservations WHERE date = $1', [params.date]);
+      return json(res, 200, { date: params.date, reservations: rows.map(r => ({
+        'Date': r.date, 'Session': r.session, 'Course': r.course, 'Name': r.name,
+        'Phone': r.phone, 'Email': r.email, 'Pax': String(r.pax), 'Status': r.status,
+        'Notes': r.notes, 'Created At': r.created_at, 'PaymentIntent': r.payment_intent,
+        'GuestNames': r.guest_names, 'Allergy': r.allergy, 'Special Occasion': r.special_occasion
+      }))});
+    }
+
+    // ── Staff Dashboard ──
+    if (path === '/staff/reservations' && params.date) {
+      const rows = await qRows('SELECT * FROM reservations WHERE date = $1', [params.date]);
+      return json(res, 200, { date: params.date, reservations: rows.map(r => ({
+        date: r.date||'',
+        name: r.name||'', phone: r.phone||'', email: r.email||'', pax: String(r.pax||1),
+        session: r.session||'', course: (r.course||'').replace(/\n/g, ', '),
+        notes: r.notes||'', status: r.status||'', paymentIntent: r.payment_intent||'',
+        createdAt: r.created_at||'', guestNames: r.guest_names||'', allergy: r.allergy||'', specialOccasion: r.special_occasion||''
+      }))});
+    }
+
+    if (req.method === 'GET' && (path === '/api/bookings/search' || path === '/staff/bookings/search')) {
+      const qText = (params.q || '').trim();
+      const dateFilter = (params.date || '').trim();
+      const queryNoPrefix = qText.replace(/^BKG-/i, '').trim();
+
+      if (dateFilter && !/^\d{4}-\d{2}-\d{2}$/.test(dateFilter)) {
+        return json(res, 400, { error: 'date must be in YYYY-MM-DD format' });
+      }
+
+      const sql = `
+        SELECT id, name, phone, email, date, session, course, pax, status, notes, allergy, special_occasion, payment_intent, created_at
+        FROM reservations
+        WHERE ($1::text = '' OR date = $1::text)
+          AND (
+            $2::text = ''
+            OR name ILIKE $3
+            OR phone ILIKE $3
+            OR COALESCE(email, '') ILIKE $3
+            OR CAST(id AS text) ILIKE $4
+          )
+        ORDER BY date DESC, created_at DESC
+        LIMIT 120
+      `;
+      const like = `%${qText}%`;
+      const idLike = `%${queryNoPrefix}%`;
+      const rows = await qRows(sql, [dateFilter, qText, like, idLike]);
+
+      return json(res, 200, {
+        query: qText,
+        date: dateFilter || null,
+        count: rows.length,
+        bookings: rows.map(r => {
+          const statusRaw = (r.status || '').toLowerCase();
+          const hasHold = !!(r.payment_intent && String(r.payment_intent).trim());
+          const paymentStatus = statusRaw.startsWith('charged')
+            ? 'paid'
+            : (hasHold ? 'hold' : 'pending');
+
+          return {
+            id: r.id,
+            reference: `BKG-${r.id}`,
+            customerName: r.name || '',
+            phone: r.phone || '',
+            email: r.email || '',
+            bookingDate: r.date || '',
+            session: r.session || '',
+            course: (r.course || '').replace(/\n/g, ', '),
+            partySize: Number(r.pax || 0),
+            dietaryRestrictions: r.allergy || '',
+            allergies: r.allergy || '',
+            specialRequests: r.notes || '',
+            specialOccasion: r.special_occasion || '',
+            notes: r.notes || '',
+            paymentStatus,
+            bookingStatus: r.status || '',
+            createdAt: r.created_at || ''
+          };
+        })
+      });
+    }
+
+    if (req.method === 'POST' && path === '/staff/lock') {
+      const body = JSON.parse(await readBody(req));
+      const { date, session, reason } = body;
+      if (!date) return json(res, 400, { error: 'date required' });
+      const sess = session || 'all';
+      const now = new Date().toISOString();
+      await q('INSERT INTO locked (date, session, reason, locked_by, locked_at) VALUES ($1,$2,$3,$4,$5)', [date, sess, reason||'Locked', 'staff', now]);
+      console.log(`[LOCK] ${date} / ${sess} — ${reason}`);
+      return json(res, 200, { success: true, date, session: sess, reason });
+    }
+
+    if (req.method === 'POST' && path === '/staff/unlock') {
+      const body = JSON.parse(await readBody(req));
+      const { date, session } = body;
+      if (!date) return json(res, 400, { error: 'date required' });
+      const sess = session || 'all';
+      await q("DELETE FROM locked WHERE date = $1 AND (session = $2 OR $2 = 'all' OR session = 'all')", [date, sess]);
+      console.log(`[UNLOCK] ${date} / ${sess}`);
+      return json(res, 200, { success: true, date, session: sess });
+    }
+
+    if (path === '/staff/locks' && params.date) {
+      const locks = await getLockedEntries(params.date);
+      return json(res, 200, { date: params.date, locks });
+    }
+
+    if (path === '/staff/waitlist' && params.date) {
+      const rows = await qRows('SELECT * FROM waitlist WHERE date = $1', [params.date]);
+      return json(res, 200, { date: params.date, waitlist: rows.map(r => ({
+        name: r.name||'', phone: r.phone||'', email: r.email||'', pax: r.pax||1,
+        session: r.session||'', course: r.course||'', notes: r.notes||'', specialOccasion: r.special_occasion||'', createdAt: r.created_at||''
+      }))});
+    }
+
+    if (req.method === 'POST' && path === '/staff/manual-book') {
+      const body = JSON.parse(await readBody(req));
+      const { date, session, course, name, phone, email, pax, notes, guestNames } = body;
+      if (!date || !session || !name || !pax) return json(res, 400, { error: 'date, session, name, pax required' });
+      const now = new Date().toISOString();
+      await q('INSERT INTO reservations (date, session, course, name, phone, email, pax, status, notes, created_at, payment_intent, guest_names, allergy, edited_at, edited_by, room) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)',
+        [date, session, course||'', name, phone||'', email||'', parseInt(pax), 'manual', notes||'', now, '', guestNames||'', '', '', '', '']);
+      console.log(`[MANUAL BOOKING] ${name} (${pax}pax) → ${session} on ${date}`);
+      return json(res, 200, { success: true, status: 'manual', name, pax });
+    }
+
+    if (req.method === 'POST' && path === '/staff/update') {
+      const body = JSON.parse(await readBody(req));
+      const { createdAt, notes, guestNames, allergy, phone, email } = body;
+      if (!createdAt) return json(res, 400, { error: 'createdAt is required' });
+      const row = await qOne('SELECT * FROM reservations WHERE created_at = $1', [createdAt]);
+      if (!row) return json(res, 404, { error: 'Reservation not found' });
+      const now = new Date().toISOString();
+      if (notes !== undefined) await q('UPDATE reservations SET notes=$1 WHERE created_at=$2', [notes, createdAt]);
+      if (phone !== undefined) await q('UPDATE reservations SET phone=$1 WHERE created_at=$2', [phone, createdAt]);
+      if (email !== undefined) await q('UPDATE reservations SET email=$1 WHERE created_at=$2', [email, createdAt]);
+      if (guestNames !== undefined) await q('UPDATE reservations SET guest_names=$1 WHERE created_at=$2', [guestNames, createdAt]);
+      if (allergy !== undefined) await q('UPDATE reservations SET allergy=$1 WHERE created_at=$2', [allergy, createdAt]);
+      await q('UPDATE reservations SET edited_at=$1, edited_by=$2 WHERE created_at=$3', [now, 'staff', createdAt]);
+      console.log(`[STAFF EDIT] Reservation ${createdAt} updated`);
+      await createStaffNotification(
+        'booking_change',
+        '📝 Booking updated',
+        `${new Date().toLocaleString('en-MY')} · ${row.name} (${row.phone}) · ${row.date} ${row.session}`,
+        { createdAt, id: row.id, date: row.date, session: row.session, name: row.name, phone: row.phone }
+      );
+      await notifyCustomer('booking-updated', row);
+      return json(res, 200, { success: true, row: row.id });
+    }
+
+    if (req.method === 'POST' && path === '/staff/action') {
+      const body = JSON.parse(await readBody(req));
+      const { createdAt, action: act } = body;
+      if (!createdAt || !act) return json(res, 400, { error: 'createdAt and action required' });
+      const row = await qOne('SELECT * FROM reservations WHERE created_at = $1', [createdAt]);
+      if (!row) return json(res, 404, { error: 'Reservation not found' });
+
+      if (act === 'cancel') {
+        const now = new Date().toISOString();
+        await q('UPDATE reservations SET status=$1, edited_at=$2, edited_by=$3 WHERE created_at=$4', ['cancelled', now, 'staff-cancel', createdAt]);
+        if (row.payment_intent && stripe) { try { await cancelPaymentIntent(row.payment_intent); } catch(e) { console.error('Release failed:', e.message); } }
+        await createStaffNotification(
+          'cancellation',
+          '❌ Booking cancelled',
+          `${new Date().toLocaleString('en-MY')} · ${row.name} (${row.phone}) · ${row.date} ${row.session}`,
+          { createdAt, id: row.id, date: row.date, session: row.session, name: row.name, phone: row.phone, by: 'staff' }
+        );
+        await notifyCustomer('booking-cancelled', row);
+        return json(res, 200, { success: true, action: 'cancelled', row: row.id });
+      }
+
+      if (act === 'postpone') {
+        const now = new Date().toISOString();
+        const targetDate = (body.newDate || '').trim();
+        const targetSession = (body.newSession || '').trim();
+        if (!targetDate || !targetSession) return json(res, 400, { error: 'newDate and newSession required for postpone' });
+
+        const validSession = ['Lunch', 'Dinner 1', 'Dinner 2'].includes(targetSession);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || !validSession) {
+          return json(res, 400, { error: 'Invalid newDate or newSession' });
+        }
+
+        const avail = await getAvailability(targetDate);
+        if (avail.blocked) return json(res, 400, { error: `Restaurant is closed on ${targetDate}: ${avail.reason}` });
+
+        const sessionInfo = avail.sessions.find(s => s.name === targetSession);
+        if (!sessionInfo) return json(res, 400, { error: 'Invalid target session' });
+        if (sessionInfo.locked) return json(res, 400, { error: 'Target session is locked/full' });
+        if (isSessionPastCutoff(targetDate, targetSession)) return json(res, 400, { error: 'Target session cutoff has passed' });
+
+        const pax = parseInt(row.pax) || 1;
+        let remaining = sessionInfo.remaining;
+        if (row.date === targetDate && row.session === targetSession) remaining += pax;
+        if (pax > remaining) return json(res, 400, { error: `Only ${remaining} seats remaining in target session` });
+
+        await q('UPDATE reservations SET date=$1, session=$2, status=$3, edited_at=$4, edited_by=$5 WHERE created_at=$6',
+          [targetDate, targetSession, 'confirmed', now, 'staff-postpone', createdAt]);
+
+        await createStaffNotification(
+          'booking_change',
+          '📝 Booking rescheduled',
+          `${new Date().toLocaleString('en-MY')} · ${row.name} (${row.phone}) · ${row.date} ${row.session} → ${targetDate} ${targetSession}`,
+          { createdAt, id: row.id, fromDate: row.date, fromSession: row.session, toDate: targetDate, toSession: targetSession, name: row.name, phone: row.phone, by: 'staff' }
+        );
+
+        await notifyCustomer('booking-postponed', { ...row, date: targetDate, session: targetSession });
+        return json(res, 200, { success: true, action: 'postponed', row: row.id, date: targetDate, session: targetSession });
+      }
+
+      if (act === 'charge100' || act === 'charge50') {
+        if (!row.payment_intent) return json(res, 400, { error: 'No payment intent found' });
+        if (!stripe) return json(res, 500, { error: 'Stripe not configured' });
+        try {
+          const now = new Date().toISOString();
+          if (act === 'charge50') {
+            const pi = await stripe.paymentIntents.retrieve(row.payment_intent);
+            const half = Math.round(pi.amount / 2);
+            const cap = await stripe.paymentIntents.capture(row.payment_intent, { amount_to_capture: half });
+            await q('UPDATE reservations SET status=$1, edited_at=$2, edited_by=$3 WHERE created_at=$4', ['charged-50%', now, 'staff-charge-50', createdAt]);
+            return json(res, 200, { success: true, action: 'charged-50%', intent: cap, row: row.id });
+          } else {
+            const cap = await capturePaymentIntent(row.payment_intent);
+            await q('UPDATE reservations SET status=$1, edited_at=$2, edited_by=$3 WHERE created_at=$4', ['charged-100%', now, 'staff-charge-100', createdAt]);
+            return json(res, 200, { success: true, action: 'charged-100%', intent: cap, row: row.id });
+          }
+        } catch(e) { return json(res, 500, { error: 'Charge failed: ' + e.message }); }
+      }
+
+      if (act === 'nocharge') {
+        const now = new Date().toISOString();
+        await q('UPDATE reservations SET status=$1, edited_at=$2, edited_by=$3 WHERE created_at=$4', ['no-charge', now, 'staff-nocharge', createdAt]);
+        if (row.payment_intent && stripe) { try { await cancelPaymentIntent(row.payment_intent); } catch(e) { console.error('Release failed:', e.message); } }
+        return json(res, 200, { success: true, action: 'no-charge', row: row.id });
+      }
+
+      return json(res, 400, { error: 'Unknown action: ' + act });
+    }
+
+    if (req.method === 'GET' && path === '/staff/notifications') {
+      const rows = await qRows('SELECT id, type, title, message, metadata, read, created_at FROM notifications ORDER BY created_at DESC LIMIT 50');
+      return json(res, 200, { notifications: rows });
+    }
+
+    if (req.method === 'GET' && path === '/staff/notifications/unread-count') {
+      const row = await qOne('SELECT COUNT(*)::int AS count FROM notifications WHERE read = false');
+      return json(res, 200, { unread: row?.count || 0 });
+    }
+
+    if (req.method === 'POST' && path === '/staff/notifications/read') {
+      const body = JSON.parse(await readBody(req));
+      if (body.all === true) {
+        await q('UPDATE notifications SET read = true WHERE read = false');
+        return json(res, 200, { success: true, all: true });
+      }
+      if (!body.id) return json(res, 400, { error: 'id or all:true required' });
+      await q('UPDATE notifications SET read = true WHERE id = $1', [body.id]);
+      return json(res, 200, { success: true, id: body.id });
+    }
+
+
+    if (req.method === 'POST' && path === '/cancel') {
+      return json(res, 200, { status: 'cancel_requested', message: 'Cancellation logged.' });
+    }
+
+    json(res, 404, { error: 'Not found' });
+  } catch (e) {
+    console.error('Error:', e.message, e.stack);
+    json(res, 500, { error: 'Internal server error' });
+  }
+});
+
+async function send24hReminders() {
+  try {
+    const rows = await qRows(`
+      SELECT r.id, r.date, r.session, r.course, r.name, r.email, r.phone, r.pax,
+             TO_CHAR(s.start_time, 'HH12:MI AM') AS session_time
+      FROM reservations r
+      LEFT JOIN sessions s ON s.name = r.session
+      WHERE r.status IN ('confirmed', 'manual')
+        AND r.reminder_sent_at IS NULL
+        AND COALESCE(r.email, '') <> ''
+        AND NOW() >= ((r.date::date + COALESCE(s.start_time, TIME '19:00')) - INTERVAL '24 hours')
+        AND NOW() <  ((r.date::date + COALESCE(s.start_time, TIME '19:00')) - INTERVAL '23 hours 45 minutes')
+      ORDER BY r.date, r.session
+    `);
+
+    for (const booking of rows) {
+      const sent = await sendReservationEmail('reminder', booking);
+      if (sent.ok) {
+        await q(
+          'UPDATE reservations SET reminder_sent_at = NOW(), reminder_message_id = $1 WHERE id = $2',
+          [sent.messageId, booking.id]
+        );
+      }
+    }
+    if (rows.length) console.log(`[REMINDER] Processed ${rows.length} reservation reminder(s)`);
+  } catch (e) {
+    console.error('[REMINDER] job failed:', e.message);
+  }
+}
+
+setInterval(send24hReminders, 15 * 60 * 1000);
+setTimeout(send24hReminders, 30 * 1000);
+
+server.listen(PORT, () => console.log(`Makii Reservation API running on port ${PORT} (PostgreSQL)`));
