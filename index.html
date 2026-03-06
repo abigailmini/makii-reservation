@@ -69,6 +69,8 @@
   .btn.primary { background: var(--cta); color: #F2EBE0; padding: 12px 26px; border-color: var(--cta); font-weight: 500; }
   .btn.primary:hover { background: #3D3228; color: #F2EBE0; border-color: #3D3228; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(44,36,24,0.2); }
   .btn:disabled { opacity: 0.35; cursor: not-allowed; transform:none; }
+  .btn.with-icon { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn.with-icon svg { width: 16px; height: 16px; flex-shrink: 0; }
 
   .landing-buttons { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 12px; }
 
@@ -352,7 +354,12 @@
     </div>
     <div class="landing-buttons">
       <button class="btn primary" onclick="startReservation()">Make a Reservation</button>
-      <a class="btn" href="tel:+60167611931">Call Us</a>
+      <a class="btn with-icon" href="https://wa.me/601153740933" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp Us">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path fill="#25D366" d="M12.04 2C6.58 2 2.15 6.41 2.15 11.85c0 1.92.55 3.79 1.59 5.4L2 22l4.91-1.71a9.9 9.9 0 0 0 5.13 1.42h.01c5.46 0 9.89-4.41 9.89-9.85S17.5 2 12.04 2Zm0 18.02h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-2.91 1.01.96-2.84-.2-.29a8.1 8.1 0 0 1-1.27-4.35c0-4.47 3.65-8.1 8.13-8.1a8.11 8.11 0 0 1 8.13 8.1c0 4.47-3.65 8.1-8.14 8.1Zm4.46-6.11c-.24-.12-1.44-.71-1.66-.79-.22-.08-.38-.12-.54.12-.16.24-.62.79-.76.95-.14.16-.28.18-.52.06-.24-.12-1.01-.37-1.93-1.18-.71-.63-1.2-1.41-1.34-1.65-.14-.24-.01-.37.11-.49.1-.1.24-.26.36-.39.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.41-.54-.42h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.31.98 2.47c.12.16 1.69 2.56 4.09 3.59.57.25 1.02.39 1.37.5.58.18 1.1.15 1.51.09.46-.07 1.44-.59 1.64-1.16.2-.57.2-1.06.14-1.16-.06-.1-.22-.16-.46-.28Z"/>
+        </svg>
+        <span>WhatsApp Us</span>
+      </a>
     </div>
   </div>
 
@@ -534,7 +541,12 @@
 
       <div class="success-actions">
         <button class="btn primary" onclick="goLanding()">Back to Home</button>
-        <a class="btn" href="tel:+60167611931">Need to Change? Call Us</a>
+        <a class="btn with-icon" href="https://wa.me/601153740933" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp Us">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="#25D366" d="M12.04 2C6.58 2 2.15 6.41 2.15 11.85c0 1.92.55 3.79 1.59 5.4L2 22l4.91-1.71a9.9 9.9 0 0 0 5.13 1.42h.01c5.46 0 9.89-4.41 9.89-9.85S17.5 2 12.04 2Zm0 18.02h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-2.91 1.01.96-2.84-.2-.29a8.1 8.1 0 0 1-1.27-4.35c0-4.47 3.65-8.1 8.13-8.1a8.11 8.11 0 0 1 8.13 8.1c0 4.47-3.65 8.1-8.14 8.1Zm4.46-6.11c-.24-.12-1.44-.71-1.66-.79-.22-.08-.38-.12-.54.12-.16.24-.62.79-.76.95-.14.16-.28.18-.52.06-.24-.12-1.01-.37-1.93-1.18-.71-.63-1.2-1.41-1.34-1.65-.14-.24-.01-.37.11-.49.1-.1.24-.26.36-.39.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.41-.54-.42h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.31.98 2.47c.12.16 1.69 2.56 4.09 3.59.57.25 1.02.39 1.37.5.58.18 1.1.15 1.51.09.46-.07 1.44-.59 1.64-1.16.2-.57.2-1.06.14-1.16-.06-.1-.22-.16-.46-.28Z"/>
+          </svg>
+          <span>WhatsApp Us</span>
+        </a>
       </div>
     </div>
   </div>
