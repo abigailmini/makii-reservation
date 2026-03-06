@@ -582,7 +582,14 @@ function startReservation() { showStep('step1'); initDatePicker(); }
 function goStep1() { showStep('step1'); }
 function goStep2() { showStep('step2'); loadAvailability(); }
 function goStep2b() { showStep('step2b'); initPaxSelector(); loadCourses(); updateStep2bBtn(); }
-function goStep3() { showStep('step3'); updateStep3Btn(); renderGuestNamesInputs(); }
+function goStep3() {
+  const maxAllowed = Math.max(0, parseInt(selectedSession?.remaining) || 0);
+  if (!selectedPax || selectedPax > maxAllowed) {
+    alert(`Selected party size exceeds available seats (${maxAllowed}). Please choose a smaller party size.`);
+    return;
+  }
+  showStep('step3'); updateStep3Btn(); renderGuestNamesInputs();
+}
 
 function goStep4() {
   const name = document.getElementById('guestName').value.trim();
@@ -613,9 +620,17 @@ let calViewDate = null; // current month being viewed
 let calMinDate = null;
 let calMaxDate = null;
 
+function getTodayMYDate() {
+  // Build a Date at local midnight for Malaysia "today" so calendar behavior is
+  // consistent even when browser/device timezone differs from MYT.
+  const now = new Date();
+  const myNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+  return new Date(myNow.getFullYear(), myNow.getMonth(), myNow.getDate());
+}
+
 function initDatePicker() {
-  const today = new Date();
-  calMinDate = new Date(today); calMinDate.setDate(calMinDate.getDate() + 1); // tomorrow
+  const today = getTodayMYDate();
+  calMinDate = new Date(today); // allow same-day bookings (session-level cutoff handled by API)
   calMaxDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // end of next month
   if (!calViewDate) calViewDate = new Date(calMinDate.getFullYear(), calMinDate.getMonth(), 1);
   renderCalendar();
@@ -631,7 +646,7 @@ function renderCalendar() {
   const monthLabel = document.getElementById('calMonth');
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dows = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = getTodayMYDate();
 
   const year = calViewDate.getFullYear(), month = calViewDate.getMonth();
   monthLabel.textContent = `${months[month]} ${year}`;
@@ -661,7 +676,7 @@ function renderCalendar() {
     el.className = 'cal-day';
     el.textContent = d;
 
-    const isPast = date <= today;
+    const isPast = date < today;
     const isBlocked = blockedDates.includes(dateStr);
     const isBeyond = date > calMaxDate;
     const isToday = date.getTime() === today.getTime();
@@ -686,7 +701,6 @@ function renderCalendar() {
 
 async function loadCalendarDots(year, month) {
   if (!API_BASE) return;
-  const today = new Date(); today.setHours(0,0,0,0);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const dots = document.querySelectorAll('.cal-day:not(.empty):not(.past)');
   for (const dot of dots) {
@@ -711,17 +725,31 @@ async function loadCalendarDots(year, month) {
 function initPaxSelector() {
   const container = document.getElementById('paxSelector');
   container.innerHTML = '';
+  const maxAllowed = Math.max(0, Math.min(10, parseInt(selectedSession?.remaining) || 0));
+
+  if (selectedPax && selectedPax > maxAllowed) {
+    selectedPax = null;
+  }
+
   for (let i = 1; i <= 10; i++) {
     const item = document.createElement('div');
-    item.className = 'pax-item' + (selectedPax === i ? ' selected' : '');
+    const disabled = i > maxAllowed;
+    item.className = 'pax-item' + (selectedPax === i ? ' selected' : '') + (disabled ? ' disabled' : '');
     item.textContent = i;
-    item.onclick = () => {
-      document.querySelectorAll('.pax-item').forEach(el => el.classList.remove('selected'));
-      item.classList.add('selected');
-      selectedPax = i;
-      renderGuestCourses();
-      updateStep2bBtn();
-    };
+    if (disabled) {
+      item.style.opacity = '0.35';
+      item.style.cursor = 'not-allowed';
+      item.style.pointerEvents = 'none';
+      item.style.filter = 'grayscale(0.4)';
+    } else {
+      item.onclick = () => {
+        document.querySelectorAll('.pax-item').forEach(el => el.classList.remove('selected'));
+        item.classList.add('selected');
+        selectedPax = i;
+        renderGuestCourses();
+        updateStep2bBtn();
+      };
+    }
     container.appendChild(item);
   }
 }
@@ -1005,6 +1033,7 @@ async function processPayment() {
   btn.disabled = true; btn.textContent = 'Authorizing...';
 
   try {
+    ensurePaxWithinAvailability();
     const name = document.getElementById('guestName').value.trim();
     const phone = document.getElementById('guestPhone').value.trim();
     const email = document.getElementById('guestEmail').value.trim();
@@ -1077,6 +1106,7 @@ async function submitWaitlist() {
   while (guestNames.length < (selectedPax||0)) guestNames.push('');
 
   try {
+    ensurePaxWithinAvailability();
     const res = await fetch(`${API_BASE}/waitlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
@@ -1154,6 +1184,13 @@ function formatTime(t) {
 function formatDisplayDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function ensurePaxWithinAvailability() {
+  const maxAllowed = Math.max(0, parseInt(selectedSession?.remaining) || 0);
+  if (!selectedPax || selectedPax > maxAllowed) {
+    throw new Error(`Party size exceeds available seats (${maxAllowed}). Please go back and reselect.`);
+  }
 }
 
 // ── Init ──
