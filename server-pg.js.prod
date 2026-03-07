@@ -571,15 +571,23 @@ const server = http.createServer(async (req, res) => {
       if (guestNames !== undefined) await q('UPDATE reservations SET guest_names=$1 WHERE created_at=$2', [guestNames, createdAt]);
       if (allergy !== undefined) await q('UPDATE reservations SET allergy=$1 WHERE created_at=$2', [allergy, createdAt]);
       await q('UPDATE reservations SET edited_at=$1, edited_by=$2 WHERE created_at=$3', [now, 'staff', createdAt]);
+
+      const updatedCourse = course !== undefined ? course : row.course;
+      let updatedCoursePrice = null;
+      if (course !== undefined) {
+        const cfg = await qOne("SELECT price FROM config WHERE course = $1 AND status='active' ORDER BY id DESC LIMIT 1", [course]);
+        if (cfg && cfg.price !== undefined && cfg.price !== null) updatedCoursePrice = Number(cfg.price);
+      }
+
       console.log(`[STAFF EDIT] Reservation ${createdAt} updated`);
       await createStaffNotification(
         'booking_change',
         '📝 Booking updated',
         `${new Date().toLocaleString('en-MY')} · ${row.name} (${row.phone}) · ${row.date} ${row.session}`,
-        { createdAt, id: row.id, date: row.date, session: row.session, name: row.name, phone: row.phone }
+        { createdAt, id: row.id, date: row.date, session: row.session, name: row.name, phone: row.phone, course: updatedCourse, coursePrice: updatedCoursePrice }
       );
-      await notifyCustomer('booking-updated', row);
-      return json(res, 200, { success: true, row: row.id });
+      await notifyCustomer('booking-updated', { ...row, course: updatedCourse });
+      return json(res, 200, { success: true, row: row.id, course: updatedCourse, coursePrice: updatedCoursePrice });
     }
 
     if (req.method === 'POST' && path === '/staff/action') {
@@ -707,14 +715,14 @@ async function send24hReminders() {
   try {
     const rows = await qRows(`
       SELECT r.id, r.date, r.session, r.course, r.name, r.email, r.phone, r.pax,
-             TO_CHAR(s.start_time, 'HH12:MI AM') AS session_time
+             TO_CHAR(COALESCE(NULLIF(s.start_time, '')::time, TIME '19:00'), 'HH12:MI AM') AS session_time
       FROM reservations r
       LEFT JOIN sessions s ON s.name = r.session
       WHERE r.status IN ('confirmed', 'manual')
         AND r.reminder_sent_at IS NULL
         AND COALESCE(r.email, '') <> ''
-        AND NOW() >= ((r.date::date + COALESCE(s.start_time, TIME '19:00')) - INTERVAL '24 hours')
-        AND NOW() <  ((r.date::date + COALESCE(s.start_time, TIME '19:00')) - INTERVAL '23 hours 45 minutes')
+        AND NOW() >= ((r.date::date + COALESCE(NULLIF(s.start_time, '')::time, TIME '19:00')) - INTERVAL '24 hours')
+        AND NOW() <  ((r.date::date + COALESCE(NULLIF(s.start_time, '')::time, TIME '19:00')) - INTERVAL '23 hours 45 minutes')
       ORDER BY r.date, r.session
     `);
 
