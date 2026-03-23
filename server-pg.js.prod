@@ -242,7 +242,7 @@ async function getAvailability(date) {
 
 // ── Reserve ──
 async function makeReservation(data, createHold = false) {
-  const { date, session, course, name, phone, email, pax, notes, payment_method, return_url, guestNames, allergy, special_occasion } = data;
+  const { date, session, course, name, phone, email, pax, notes, payment_method, return_url, guestNames, allergy, special_occasion, confirmed_payment_intent } = data;
   if (!date || !session || !course || !name || !phone || !email || !pax)
     return { error: 'Missing required fields: date, session, course, name, phone, email, pax' };
 
@@ -259,7 +259,24 @@ async function makeReservation(data, createHold = false) {
 
   const now = new Date().toISOString();
   let piId = '';
-  if (createHold) {
+  
+  // Handle 3DS completion flow
+  if (confirmed_payment_intent) {
+    if (!stripe) return { error: 'Stripe not configured' };
+    try {
+      // Verify the payment intent is in the correct state after 3DS
+      const pi = await stripe.paymentIntents.retrieve(confirmed_payment_intent);
+      if (pi.status !== 'requires_capture') {
+        console.error('[3DS] Payment intent not ready for capture:', pi.status);
+        return { error: 'Payment verification failed. Please try again.' };
+      }
+      piId = confirmed_payment_intent;
+      console.log(`[3DS] Confirmed payment intent ${piId} after 3D Secure`);
+    } catch (e) {
+      console.error('[3DS] Failed to verify payment intent:', e.message);
+      return { error: 'Payment verification failed: ' + e.message };
+    }
+  } else if (createHold) {
     if (!stripe) return { error: 'Stripe not configured' };
     try {
       const intent = await stripe.paymentIntents.create({
