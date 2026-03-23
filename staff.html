@@ -104,6 +104,7 @@
   /* Status badges */
   .status-badge { font-size:0.6rem; padding:3px 8px; border-radius:4px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; display:inline-block; margin-left:6px; vertical-align:middle; }
   .status-confirmed { background:rgba(74,122,90,0.12); color:var(--green); border:1px solid rgba(91,138,106,0.25); }
+  .status-booked { background:rgba(74,122,90,0.12); color:var(--green); border:1px solid rgba(91,138,106,0.25); }
   .status-manual { background:rgba(91,126,166,0.1); color:var(--blue); border:1px solid rgba(91,126,166,0.2); }
   .status-cancelled { background:rgba(184,84,80,0.1); color:var(--red); border:1px solid rgba(184,84,80,0.25); }
   .status-postponed { background:rgba(139,115,85,0.1); color:var(--gold); border:1px solid rgba(139,115,85,0.2); }
@@ -381,7 +382,7 @@ function render(avail, reservations) {
   _reservations = []; // Reset for fresh render
 
   // Stats — only count active bookings (not cancelled/postponed) for capacity
-  const activeStatuses = ['confirmed', 'manual'];
+  const activeStatuses = ['confirmed', 'manual', 'booked'];
   const activeRes = reservations.filter(r => activeStatuses.includes(r.status));
   const totalGuests = activeRes.reduce((s, r) => s + (parseInt(r.pax) || 0), 0);
   const totalBookings = reservations.length;
@@ -467,8 +468,8 @@ function render(avail, reservations) {
 
         // Status badge
         const isCancelled = ['cancelled','postponed','charged-50%','charged-100%'].includes(r.status);
-        const statusClass = r.status === 'confirmed' ? 'status-confirmed' : r.status === 'manual' ? 'status-manual' : r.status === 'cancelled' ? 'status-cancelled' : r.status === 'postponed' ? 'status-postponed' : r.status?.startsWith('charged') ? 'status-charged' : 'status-confirmed';
-        const statusLabel = r.status === 'confirmed' ? 'Confirmed' : r.status === 'manual' ? 'Manual Confirm' : r.status === 'cancelled' ? 'Cancelled' : r.status === 'postponed' ? 'Postponed' : r.status === 'charged-50%' ? 'Charged 50%' : r.status === 'charged-100%' ? 'Charged 100%' : r.status || 'Confirmed';
+        const statusClass = r.status === 'confirmed' ? 'status-confirmed' : r.status === 'booked' ? 'status-booked' : r.status === 'manual' ? 'status-manual' : r.status === 'cancelled' ? 'status-cancelled' : r.status === 'postponed' ? 'status-postponed' : r.status?.startsWith('charged') ? 'status-charged' : 'status-confirmed';
+        const statusLabel = r.status === 'confirmed' ? 'Confirmed' : r.status === 'booked' ? 'Booked' : r.status === 'manual' ? 'Manual Confirm' : r.status === 'cancelled' ? 'Cancelled' : r.status === 'postponed' ? 'Postponed' : r.status === 'charged-50%' ? 'Charged 50%' : r.status === 'charged-100%' ? 'Charged 100%' : r.status || 'Confirmed';
 
         html += `<div class="guest-row ${isCancelled ? 'cancelled' : ''}" data-detail-id="detail-${sess.name.replace(/\\s/g,'')}-${i}" style="cursor:pointer">
           <div class="guest-num">${i + 1}</div>
