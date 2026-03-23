@@ -69,10 +69,19 @@
   .btn.primary { background: var(--cta); color: #F2EBE0; padding: 12px 26px; border-color: var(--cta); font-weight: 500; }
   .btn.primary:hover { background: #3D3228; color: #F2EBE0; border-color: #3D3228; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(44,36,24,0.2); }
   .btn:disabled { opacity: 0.35; cursor: not-allowed; transform:none; }
-  .btn.with-icon { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-  .btn.with-icon svg { width: 16px; height: 16px; flex-shrink: 0; }
 
   .landing-buttons { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 12px; }
+  .menu-link-btn { background:none; border:none; color:var(--gold); letter-spacing:0.12em; text-transform:uppercase; font-size:0.78rem; cursor:pointer; opacity:0.9; }
+  .menu-link-btn:hover { opacity:1; text-decoration:underline; }
+  .menu-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:200; align-items:center; justify-content:center; padding:18px; }
+  .menu-modal.show { display:flex; }
+  .menu-modal-card { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; width:min(860px, 96vw); padding:14px; }
+  .menu-slider { position:relative; height:min(75vh, 760px); display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:10px; background:rgba(255,255,255,0.35); }
+  .menu-slider img { max-width:100%; max-height:100%; object-fit:contain; display:none; }
+  .menu-slider img.active { display:block; }
+  .menu-nav { position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:50%; border:1px solid var(--border); background:rgba(255,255,255,0.7); cursor:pointer; }
+  .menu-nav.prev { left:10px; } .menu-nav.next { right:10px; }
+  .menu-counter { text-align:center; margin-top:8px; color:var(--text-dim); font-size:0.78rem; }
 
   /* ── Steps ── */
   .step { display: none; flex-direction: column; gap: 20px; padding-top: 20px; opacity:0; transform:translateY(6px); transition: opacity 260ms ease, transform 260ms ease; }
@@ -110,14 +119,12 @@
   .cal-day:hover:not(.disabled):not(.past):not(.empty):not(.blocked) { background: rgba(139,115,85,0.1); color: var(--gold); }
   .cal-day.selected { background: rgba(139,115,85,0.15); border-color: var(--gold); color: var(--gold); font-weight: 500; box-shadow: 0 0 12px rgba(139,115,85,0.15); }
   .cal-day.past, .cal-day.disabled { color: rgba(255,255,255,0.12); cursor: default; }
-  .cal-day.blocked { color: rgba(255,255,255,0.12); cursor: default; text-decoration: line-through; }
+  .cal-day.blocked { color: rgba(139,115,85,0.25); cursor: default; }
   .cal-day.empty { cursor: default; }
-  .cal-day.today::after { content: ''; position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); opacity: 0.6; }
   .cal-day .avail-dot { position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; }
   .cal-day .avail-dot.green { background: #4A7A5A; }
   .cal-day .avail-dot.yellow { background: #C9A040; }
   .cal-day .avail-dot.red { background: #B85450; }
-  .cal-day.today .avail-dot { bottom: 10px; }
 
   /* ── Party Size ── */
   .pax-selector { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -191,26 +198,6 @@
   .form-group input:focus, .form-group textarea:focus { border-color: rgba(139,115,85,0.8); box-shadow: 0 8px 24px rgba(139,115,85,0.1); }
   .form-group textarea { resize: vertical; min-height: 88px; }
   .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(139,115,85,0.35); }
-
-  .occasion-chips { display: flex; gap: 10px; flex-wrap: wrap; }
-  .occasion-chip {
-    border: 1px solid var(--border);
-    background: rgba(255,255,255,0.18);
-    color: var(--text-dim);
-    border-radius: 999px;
-    padding: 9px 14px;
-    font-size: 0.85rem;
-    font-family: 'Inter', sans-serif;
-    cursor: pointer;
-    transition: all 160ms ease;
-  }
-  .occasion-chip:hover { border-color: rgba(181,143,85,0.55); color: var(--text); }
-  .occasion-chip.selected {
-    border-color: rgba(181,143,85,0.85);
-    background: linear-gradient(180deg, rgba(181,143,85,0.18), rgba(181,143,85,0.08));
-    color: var(--gold);
-    box-shadow: 0 8px 20px rgba(107,90,62,0.15);
-  }
 
   /* ── Terms & Conditions ── */
   .tnc-section { margin-top: 4px; }
@@ -374,12 +361,16 @@
     </div>
     <div class="landing-buttons">
       <button class="btn primary" onclick="startReservation()">Make a Reservation</button>
-      <a class="btn with-icon" href="https://wa.me/601153740933" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp Us">
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path fill="#25D366" d="M12.04 2C6.58 2 2.15 6.41 2.15 11.85c0 1.92.55 3.79 1.59 5.4L2 22l4.91-1.71a9.9 9.9 0 0 0 5.13 1.42h.01c5.46 0 9.89-4.41 9.89-9.85S17.5 2 12.04 2Zm0 18.02h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-2.91 1.01.96-2.84-.2-.29a8.1 8.1 0 0 1-1.27-4.35c0-4.47 3.65-8.1 8.13-8.1a8.11 8.11 0 0 1 8.13 8.1c0 4.47-3.65 8.1-8.14 8.1Zm4.46-6.11c-.24-.12-1.44-.71-1.66-.79-.22-.08-.38-.12-.54.12-.16.24-.62.79-.76.95-.14.16-.28.18-.52.06-.24-.12-1.01-.37-1.93-1.18-.71-.63-1.2-1.41-1.34-1.65-.14-.24-.01-.37.11-.49.1-.1.24-.26.36-.39.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.41-.54-.42h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.31.98 2.47c.12.16 1.69 2.56 4.09 3.59.57.25 1.02.39 1.37.5.58.18 1.1.15 1.51.09.46-.07 1.44-.59 1.64-1.16.2-.57.2-1.06.14-1.16-.06-.1-.22-.16-.46-.28Z"/>
-        </svg>
-        <span>WhatsApp Us</span>
-      </a>
+      <a class="btn" href="https://wa.me/60167611931">WhatsApp Us</a>
+      <button class="menu-link-btn" onclick="openMenuModal()">Menu</button>
+    </div>
+  </div>
+
+  <div class="menu-modal" id="menuModal" onclick="if(event.target===this) closeMenuModal()">
+    <div class="menu-modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-family:'Cormorant Garamond',serif;font-size:1.35rem;color:var(--gold)">Makii Menu</div><button class="menu-link-btn" onclick="closeMenuModal()" style="font-size:0.9rem">Close ✕</button></div>
+      <div class="menu-slider" id="menuSlider"></div>
+      <div class="menu-counter" id="menuCounter"></div>
     </div>
   </div>
 
@@ -439,8 +430,12 @@
   <div class="step" id="step3">
     <div class="progress-bar"><div class="dot done"></div><div class="dot done"></div><div class="dot done"></div><div class="dot current"></div><div class="dot"></div></div>
     <div class="step-header">
-      <button class="back-btn" onclick="goStep2b()">←</button>
-      <span class="step-title">Your Details</span>
+      <button class="back-btn" onclick="isWaitlist ? goStep2() : goStep2b()">←</button>
+      <span class="step-title" id="step3Title">Your Details</span>
+    </div>
+    <div id="waitlistPaxSection" style="display:none;margin-bottom:16px">
+      <div style="font-size:0.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px">Party Size</div>
+      <div class="pax-selector" id="waitlistPaxSelector"></div>
     </div>
     <div class="form-group">
       <label>Name *</label>
@@ -460,16 +455,17 @@
     <div id="guestNamesList" style="display:flex;flex-direction:column;gap:8px"></div>
 
     <div class="form-group">
-      <label>Special Occasion (optional)</label>
-      <div class="occasion-chips" id="specialOccasionChips">
-        <button type="button" class="occasion-chip" data-value="Birthday 🎂" onclick="toggleSpecialOccasion('Birthday 🎂', this)">🎂 Birthday</button>
-        <button type="button" class="occasion-chip" data-value="Anniversary 💕" onclick="toggleSpecialOccasion('Anniversary 💕', this)">💕 Anniversary</button>
+      <label>Occasion</label>
+      <div id="guestOccasionBtns" style="display:flex;gap:10px">
+        <button type="button" class="occasion-btn" data-val="Birthday" onclick="toggleOccasion(this)" style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.12);color:var(--text-dim);font-family:inherit;font-size:0.78rem;cursor:pointer;transition:all 0.2s">🎂 Birthday</button>
+        <button type="button" class="occasion-btn" data-val="Anniversary" onclick="toggleOccasion(this)" style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.12);color:var(--text-dim);font-family:inherit;font-size:0.78rem;cursor:pointer;transition:all 0.2s">💍 Anniversary</button>
+        <button type="button" class="occasion-btn" data-val="Casual Dining" onclick="toggleOccasion(this)" style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.12);color:var(--text-dim);font-family:inherit;font-size:0.78rem;cursor:pointer;transition:all 0.2s">🍽️ Casual Dining</button>
       </div>
-      <input type="hidden" id="specialOccasion" value="">
+      <input type="hidden" id="guestOccasion" value="">
     </div>
     <div class="form-group">
       <label>Dietary / Special Request</label>
-      <textarea id="guestNotes" placeholder="e.g. No shellfish, no pork, halal"></textarea>
+      <textarea id="guestNotes" placeholder="e.g. No shellfish, vegetarian, seating preference..."></textarea>
     </div>
     <!-- T&C -->
     <div class="tnc-section">
@@ -569,12 +565,7 @@
 
       <div class="success-actions">
         <button class="btn primary" onclick="goLanding()">Back to Home</button>
-        <a class="btn with-icon" href="https://wa.me/601153740933" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp Us">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path fill="#25D366" d="M12.04 2C6.58 2 2.15 6.41 2.15 11.85c0 1.92.55 3.79 1.59 5.4L2 22l4.91-1.71a9.9 9.9 0 0 0 5.13 1.42h.01c5.46 0 9.89-4.41 9.89-9.85S17.5 2 12.04 2Zm0 18.02h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-2.91 1.01.96-2.84-.2-.29a8.1 8.1 0 0 1-1.27-4.35c0-4.47 3.65-8.1 8.13-8.1a8.11 8.11 0 0 1 8.13 8.1c0 4.47-3.65 8.1-8.14 8.1Zm4.46-6.11c-.24-.12-1.44-.71-1.66-.79-.22-.08-.38-.12-.54.12-.16.24-.62.79-.76.95-.14.16-.28.18-.52.06-.24-.12-1.01-.37-1.93-1.18-.71-.63-1.2-1.41-1.34-1.65-.14-.24-.01-.37.11-.49.1-.1.24-.26.36-.39.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.41-.54-.42h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.31.98 2.47c.12.16 1.69 2.56 4.09 3.59.57.25 1.02.39 1.37.5.58.18 1.1.15 1.51.09.46-.07 1.44-.59 1.64-1.16.2-.57.2-1.06.14-1.16-.06-.1-.22-.16-.46-.28Z"/>
-          </svg>
-          <span>WhatsApp Us</span>
-        </a>
+        <a class="btn" href="https://wa.me/60167611931">Need to Change? WhatsApp Us</a>
       </div>
     </div>
   </div>
@@ -590,7 +581,6 @@ let API_BASE = (window.location.hostname === 'localhost' || window.location.host
 let selectedDate = null, selectedPax = null, selectedSession = null, selectedCourse = null;
 let guestCourses = [], availableCourses = [], availabilityData = null, blockedDates = [];
 let isWaitlist = false;
-let specialOccasionSelections = new Set();
 let stripe = null, stripeElements = null, cardElement = null;
 
 // Add-ons data
@@ -603,6 +593,13 @@ let ADDONS = [
   { key: 'Soft Drink Pairing', price: 30 }
 ];
 let addonCounts = {}; // { 'Extra Uni': 0 }
+let menuImages = [
+  'menu/menu-1.jpg',
+  'menu/menu-2.jpg',
+  'menu/menu-3.jpg',
+  'menu/menu-4.jpg'
+];
+let menuIdx = 0;
 
 // ── Navigation ──
 function showStep(id) {
@@ -615,7 +612,6 @@ function showStep(id) {
 function goLanding() {
   selectedDate = null; selectedPax = null; selectedSession = null; selectedCourse = null;
   guestCourses = []; isWaitlist = false;
-  resetSpecialOccasionChips();
   document.getElementById('landing').style.display = 'flex';
   document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
 }
@@ -623,14 +619,51 @@ function goLanding() {
 function startReservation() { showStep('step1'); initDatePicker(); }
 function goStep1() { showStep('step1'); }
 function goStep2() { showStep('step2'); loadAvailability(); }
-function goStep2b() { showStep('step2b'); initPaxSelector(); loadCourses(); updateStep2bBtn(); }
-function goStep3() {
-  const maxAllowed = Math.max(0, parseInt(selectedSession?.remaining) || 0);
-  if (!selectedPax || selectedPax > maxAllowed) {
-    alert(`Selected party size exceeds available seats (${maxAllowed}). Please choose a smaller party size.`);
+function goStep2b() {
+  if (isWaitlist) {
+    // Skip course selection — go straight to waitlist form
+    renderWaitlistPaxSelector();
+    goStep3();
     return;
   }
-  showStep('step3'); updateStep3Btn(); renderGuestNamesInputs();
+  showStep('step2b'); initPaxSelector(); loadCourses(); updateStep2bBtn();
+}
+function goStep3() {
+  showStep('step3');
+  const waitlistPaxSection = document.getElementById('waitlistPaxSection');
+  const guestNamesSection = document.getElementById('guestNamesList')?.parentElement;
+  if (isWaitlist) {
+    document.getElementById('step3Title').textContent = 'Join Waitlist';
+    waitlistPaxSection.style.display = 'block';
+    // Hide guest names, occasion, allergy for waitlist
+    document.querySelectorAll('#step3 .section-label').forEach(el => { if (el.textContent.includes('Guest Names')) el.style.display = 'none'; });
+    document.getElementById('guestNamesList').style.display = 'none';
+  } else {
+    document.getElementById('step3Title').textContent = 'Your Details';
+    waitlistPaxSection.style.display = 'none';
+    document.querySelectorAll('#step3 .section-label').forEach(el => el.style.display = '');
+    document.getElementById('guestNamesList').style.display = '';
+  }
+  updateStep3Btn();
+  if (!isWaitlist) renderGuestNamesInputs();
+}
+
+function renderWaitlistPaxSelector() {
+  const container = document.getElementById('waitlistPaxSelector');
+  container.innerHTML = '';
+  selectedPax = null;
+  for (let i = 1; i <= 10; i++) {
+    const item = document.createElement('div');
+    item.className = 'pax-item';
+    item.textContent = i;
+    item.onclick = () => {
+      container.querySelectorAll('.pax-item').forEach(el => el.classList.remove('selected'));
+      item.classList.add('selected');
+      selectedPax = i;
+      updateStep3Btn();
+    };
+    container.appendChild(item);
+  }
 }
 
 function goStep4() {
@@ -653,27 +686,36 @@ function updateStep3Btn() {
   const btn = document.getElementById('step3Next');
   btn.textContent = isWaitlist ? 'Join Waitlist' : 'Continue to Payment';
   const agreed = document.getElementById('tncAgree').checked;
-  btn.disabled = !agreed;
-}
-
-function toggleSpecialOccasion(value, el) {
-  if (specialOccasionSelections.has(value)) {
-    specialOccasionSelections.delete(value);
-    el.classList.remove('selected');
+  if (isWaitlist) {
+    btn.disabled = !agreed || !selectedPax;
   } else {
-    specialOccasionSelections.add(value);
-    el.classList.add('selected');
+    btn.disabled = !agreed;
   }
-  const hidden = document.getElementById('specialOccasion');
-  if (hidden) hidden.value = Array.from(specialOccasionSelections).join(', ');
 }
 
-function resetSpecialOccasionChips() {
-  specialOccasionSelections = new Set();
-  document.querySelectorAll('.occasion-chip').forEach(chip => chip.classList.remove('selected'));
-  const hidden = document.getElementById('specialOccasion');
-  if (hidden) hidden.value = '';
+
+function renderMenuSlider() {
+  const slider = document.getElementById('menuSlider');
+  const counter = document.getElementById('menuCounter');
+  slider.innerHTML = '';
+  if (!menuImages.length) { slider.innerHTML = '<div style="color:var(--text-dim)">Menu coming soon</div>'; counter.textContent=''; return; }
+  menuImages.forEach((src, i) => {
+    const img = document.createElement('img');
+    img.src = src;
+    img.loading = 'lazy';
+    img.className = i === menuIdx ? 'active' : '';
+    img.onerror = () => { img.style.display = 'none'; };
+    slider.appendChild(img);
+  });
+  if (menuImages.length > 1) {
+    const prev = document.createElement('button'); prev.className='menu-nav prev'; prev.textContent='‹'; prev.onclick=(e)=>{e.stopPropagation(); menuIdx=(menuIdx-1+menuImages.length)%menuImages.length; renderMenuSlider();};
+    const next = document.createElement('button'); next.className='menu-nav next'; next.textContent='›'; next.onclick=(e)=>{e.stopPropagation(); menuIdx=(menuIdx+1)%menuImages.length; renderMenuSlider();};
+    slider.appendChild(prev); slider.appendChild(next);
+  }
+  counter.textContent = `${menuIdx + 1} / ${menuImages.length}`;
 }
+function openMenuModal(){ menuIdx = 0; renderMenuSlider(); document.getElementById('menuModal').classList.add('show'); }
+function closeMenuModal(){ document.getElementById('menuModal').classList.remove('show'); }
 
 // ── Date Picker ──
 // ── Calendar ──
@@ -681,17 +723,9 @@ let calViewDate = null; // current month being viewed
 let calMinDate = null;
 let calMaxDate = null;
 
-function getTodayMYDate() {
-  // Build a Date at local midnight for Malaysia "today" so calendar behavior is
-  // consistent even when browser/device timezone differs from MYT.
-  const now = new Date();
-  const myNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
-  return new Date(myNow.getFullYear(), myNow.getMonth(), myNow.getDate());
-}
-
 function initDatePicker() {
-  const today = getTodayMYDate();
-  calMinDate = new Date(today); // allow same-day bookings (session-level cutoff handled by API)
+  const today = new Date();
+  calMinDate = new Date(today); calMinDate.setDate(calMinDate.getDate() + 1); // tomorrow
   calMaxDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // end of next month
   if (!calViewDate) calViewDate = new Date(calMinDate.getFullYear(), calMinDate.getMonth(), 1);
   renderCalendar();
@@ -707,7 +741,7 @@ function renderCalendar() {
   const monthLabel = document.getElementById('calMonth');
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dows = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const today = getTodayMYDate();
+  const today = new Date(); today.setHours(0,0,0,0);
 
   const year = calViewDate.getFullYear(), month = calViewDate.getMonth();
   monthLabel.textContent = `${months[month]} ${year}`;
@@ -738,7 +772,8 @@ function renderCalendar() {
     el.textContent = d;
 
     const isPast = date < today;
-    const isBlocked = blockedDates.includes(dateStr);
+    const isWeeklyOff = date.getDay() === 3; // Wednesday
+    const isBlocked = isWeeklyOff || blockedDates.includes(dateStr);
     const isBeyond = date > calMaxDate;
     const isToday = date.getTime() === today.getTime();
 
@@ -762,8 +797,9 @@ function renderCalendar() {
 
 async function loadCalendarDots(year, month) {
   if (!API_BASE) return;
+  const today = new Date(); today.setHours(0,0,0,0);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const dots = document.querySelectorAll('.cal-day:not(.empty):not(.past)');
+  const dots = document.querySelectorAll('.cal-day:not(.empty):not(.past):not(.blocked)');
   for (const dot of dots) {
     const dayNum = parseInt(dot.textContent);
     if (!dayNum) continue;
@@ -786,22 +822,17 @@ async function loadCalendarDots(year, month) {
 function initPaxSelector() {
   const container = document.getElementById('paxSelector');
   container.innerHTML = '';
-  const maxAllowed = Math.max(0, Math.min(10, parseInt(selectedSession?.remaining) || 0));
-
-  if (selectedPax && selectedPax > maxAllowed) {
-    selectedPax = null;
-  }
-
+  const maxPax = (selectedSession && selectedSession.maxBookablePax != null) ? Math.min(selectedSession.maxBookablePax, 10) : ((selectedSession && selectedSession.remaining > 0) ? Math.min(selectedSession.remaining, 10) : 10);
+  if (selectedPax > maxPax) { selectedPax = null; }
   for (let i = 1; i <= 10; i++) {
     const item = document.createElement('div');
-    const disabled = i > maxAllowed;
+    const disabled = i > maxPax;
     item.className = 'pax-item' + (selectedPax === i ? ' selected' : '') + (disabled ? ' disabled' : '');
     item.textContent = i;
     if (disabled) {
-      item.style.opacity = '0.35';
-      item.style.cursor = 'not-allowed';
+      item.style.opacity = '0.3';
       item.style.pointerEvents = 'none';
-      item.style.filter = 'grayscale(0.4)';
+      item.style.color = '#bbb';
     } else {
       item.onclick = () => {
         document.querySelectorAll('.pax-item').forEach(el => el.classList.remove('selected'));
@@ -838,12 +869,13 @@ async function loadAvailability() {
     availableCourses = availabilityData.courses || [];
     // Update addons from availability response (date-filtered)
     if (availabilityData.addons && availabilityData.addons.length > 0) {
-      ADDONS = availabilityData.addons.map(a => ({ key: a.name, price: a.price, description: a.description || '' }));
+      ADDONS = availabilityData.addons.map(a => ({ key: a.name, price: a.price, description: a.description || '', image_url: a.image_url || '' }));
     }
 
     availabilityData.sessions.forEach(s => {
-      const isFull = s.remaining <= 0;
-      const rem = s.remaining;
+      const maxBook = s.maxBookablePax != null ? s.maxBookablePax : s.remaining;
+      const isFull = maxBook <= 0;
+      const rem = maxBook;
       let seatClass = '', seatBadge = '';
       if (isFull) {
         seatClass = ' full'; seatBadge = '<div class="waitlist-tag">Fully Booked</div>';
@@ -855,8 +887,16 @@ async function loadAvailability() {
 
       const card = document.createElement('div');
       card.className = 'session-card' + seatClass;
+      const selDateObj = new Date(selectedDate + 'T00:00:00');
+      const dayOfWeek = selDateObj.getDay();
+      const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isLunch = s.name.toLowerCase().includes('lunch');
+      const isDinner2 = s.name.toLowerCase().includes('dinner 2');
+      const isPetFriendly = (isWeekday && isDinner2) || (isWeekend && isLunch);
+      const petLabel = isPetFriendly ? ' <span style="font-size:0.7rem;color:#8B7355;font-weight:400">(Pet Friendly 🐾)</span>' : '';
       card.innerHTML = `
-        <div class="session-info"><h3>${s.name}</h3><div class="time">${formatTime(s.startTime)} — ${formatTime(s.endTime)}</div></div>
+        <div class="session-info"><h3>${s.name}${petLabel}</h3><div class="time">${formatTime(s.startTime)} — ${formatTime(s.endTime)}</div></div>
         <div class="session-meta">${seatBadge}</div>
       `;
       if (!isFull) {
@@ -996,21 +1036,49 @@ function initAddonsUI() {
   const container = document.getElementById('addonsList');
   container.innerHTML = '';
   addonCounts = {};
-  ADDONS.forEach(a => { addonCounts[a.key] = 0; const id = `addon-${a.key.replace(/\s/g,'-')}`;
-    const card = document.createElement('div'); card.className = 'addon-card'; card.id = id;
+  ADDONS.forEach(a => {
+    addonCounts[a.key] = 0;
+    const id = `addon-${a.key.replace(/\s/g,'-')}`;
+    const hasImage = a.image_url && a.image_url.trim();
+    const card = document.createElement('div');
+    card.className = 'addon-card';
+    card.id = id;
+    card.style.flexDirection = 'column';
+    card.style.alignItems = 'stretch';
+    const imgId = `${id}-img`;
+    if (hasImage) card.style.cursor = 'pointer';
     card.innerHTML = `
-      <div class="addon-info">
-        <div class="addon-name">${a.key}</div>
-        <div class="addon-price">RM ${a.price}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="addon-info" style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="addon-name">${a.key}</div>
+            ${hasImage ? `<span style="font-size:0.7rem;color:var(--gold);transition:transform 0.2s" id="${imgId}-arrow">▼</span>` : ''}
+          </div>
+          <div class="addon-price">RM ${a.price}</div>
+          ${a.description ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:4px;line-height:1.4;white-space:pre-line">${a.description}</div>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px" onclick="event.stopPropagation()">
+          <button class="counter-btn" onclick="adjustAddon('${a.key}', -1)">−</button>
+          <div class="counter-val" id="${id}-val">0</div>
+          <button class="counter-btn" onclick="adjustAddon('${a.key}', 1)">+</button>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <button class="counter-btn" onclick="adjustAddon('${a.key}', -1)">−</button>
-        <div class="counter-val" id="${id}-val">0</div>
-        <button class="counter-btn" onclick="adjustAddon('${a.key}', 1)">+</button>
-      </div>
+      ${hasImage ? `<div id="${imgId}" style="display:none;margin-top:10px"><img src="${API_BASE}${a.image_url}" style="width:100%;max-height:280px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.parentElement.style.display='none'"></div>` : ''}
     `;
+    if (hasImage) {
+      card.addEventListener('click', function() { toggleAddonImage(imgId); });
+    }
     container.appendChild(card);
   });
+}
+
+function toggleAddonImage(imgId) {
+  const el = document.getElementById(imgId);
+  if (!el) return;
+  const showing = el.style.display === 'none';
+  el.style.display = showing ? 'block' : 'none';
+  const arrow = document.getElementById(imgId + '-arrow');
+  if (arrow) arrow.textContent = showing ? '▲' : '▼';
 }
 
 function adjustAddon(name, delta) {
@@ -1038,6 +1106,26 @@ function renderGuestNamesInputs() {
   container.appendChild(div);
   // auto-fill first guest into combined field
   syncGuest1();
+}
+
+function toggleOccasion(btn) {
+  const val = btn.dataset.val;
+  const input = document.getElementById('guestOccasion');
+  const wasActive = input.value === val;
+  // Reset only the previously selected one
+  document.querySelectorAll('.occasion-btn').forEach(b => {
+    if (b.dataset.val === input.value) {
+      b.style.borderColor = ''; b.style.background = 'rgba(255,255,255,0.12)'; b.style.color = 'var(--text-dim)';
+    }
+  });
+  if (wasActive) {
+    input.value = '';
+  } else {
+    btn.style.borderColor = 'rgba(139,115,85,0.8)';
+    btn.style.background = 'rgba(139,115,85,0.1)';
+    btn.style.color = 'var(--gold)';
+    input.value = val;
+  }
 }
 
 function syncGuest1() {
@@ -1094,12 +1182,11 @@ async function processPayment() {
   btn.disabled = true; btn.textContent = 'Authorizing...';
 
   try {
-    ensurePaxWithinAvailability();
     const name = document.getElementById('guestName').value.trim();
     const phone = document.getElementById('guestPhone').value.trim();
     const email = document.getElementById('guestEmail').value.trim();
     const notes = document.getElementById('guestNotes').value.trim();
-    const specialOccasion = (document.getElementById('specialOccasion') && document.getElementById('specialOccasion').value) || '';
+    const occasion = (document.getElementById('guestOccasion') && document.getElementById('guestOccasion').value.trim()) || '';
     const allergy = (document.getElementById('guestAllergy') && document.getElementById('guestAllergy').value.trim()) || '';
 
     // Create payment method
@@ -1124,7 +1211,7 @@ async function processPayment() {
       headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
       body: JSON.stringify({
         date: selectedDate, session: selectedSession.name, course: selectedCourse,
-        name, phone, email, pax: selectedPax, notes, special_occasion: specialOccasion, allergy,
+        name, phone, email, pax: selectedPax, notes, occasion, allergy,
         createHold: true, payment_method: pmResult.paymentMethod.id,
         addons: JSON.stringify(addons), guestNames: JSON.stringify(guestNames),
         return_url: window.location.origin + window.location.pathname + '?payment_status=complete'
@@ -1136,12 +1223,31 @@ async function processPayment() {
 
     // Handle 3D Secure if needed
     if (data.requires_action && data.client_secret) {
+      btn.textContent = '3D Secure verification...';
       const result = await stripe.handleCardAction(data.client_secret);
       if (result.error) throw new Error(result.error.message);
-      // 3DS passed — the PaymentIntent is now confirmed server-side
+      
+      // 3DS passed — now complete the booking with the confirmed payment intent
+      btn.textContent = 'Completing reservation...';
+      const completeRes = await fetch(`${API_BASE}/book`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
+        body: JSON.stringify({
+          date: selectedDate, session: selectedSession.name, course: selectedCourse,
+          name, phone, email, pax: selectedPax, notes, occasion, allergy,
+          createHold: true, 
+          confirmed_payment_intent: result.paymentIntent.id,
+          addons: JSON.stringify(addons), 
+          guestNames: JSON.stringify(guestNames)
+        })
+      });
+      
+      const completeData = await completeRes.json();
+      if (completeData.error) throw new Error(completeData.error);
+      showSuccess(completeData);
+    } else {
+      showSuccess(data);
     }
-
-    showSuccess(data);
   } catch (e) {
     error.textContent = e.message || 'Payment failed. Please try again.';
     error.style.display = 'block';
@@ -1155,7 +1261,7 @@ async function submitWaitlist() {
   const phone = document.getElementById('guestPhone').value.trim();
   const email = document.getElementById('guestEmail').value.trim();
   const notes = document.getElementById('guestNotes').value.trim();
-  const specialOccasion = (document.getElementById('specialOccasion') && document.getElementById('specialOccasion').value) || '';
+  const occasion = (document.getElementById('guestOccasion') && document.getElementById('guestOccasion').value.trim()) || '';
   const allergy = (document.getElementById('guestAllergy') && document.getElementById('guestAllergy').value.trim()) || '';
   const btn = document.getElementById('step3Next');
   btn.disabled = true; btn.textContent = 'Submitting...';
@@ -1169,11 +1275,10 @@ async function submitWaitlist() {
   while (guestNames.length < (selectedPax||0)) guestNames.push('');
 
   try {
-    ensurePaxWithinAvailability();
     const res = await fetch(`${API_BASE}/waitlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
-      body: JSON.stringify({ date: selectedDate, session: selectedSession.name, course: selectedCourse, name, phone, email, pax: selectedPax, notes, special_occasion: specialOccasion, allergy, addons: JSON.stringify(addons), guestNames: JSON.stringify(guestNames) })
+      body: JSON.stringify({ date: selectedDate, session: selectedSession.name, course: selectedCourse, name, phone, email, pax: selectedPax, notes, occasion, allergy, addons: JSON.stringify(addons), guestNames: JSON.stringify(guestNames) })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -1249,13 +1354,6 @@ function formatDisplayDate(dateStr) {
   return d.toLocaleDateString('en-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function ensurePaxWithinAvailability() {
-  const maxAllowed = Math.max(0, parseInt(selectedSession?.remaining) || 0);
-  if (!selectedPax || selectedPax > maxAllowed) {
-    throw new Error(`Party size exceeds available seats (${maxAllowed}). Please go back and reselect.`);
-  }
-}
-
 // ── Init ──
 (async function init() {
   console.log('API_BASE:', API_BASE);
@@ -1270,7 +1368,7 @@ function ensurePaxWithinAvailability() {
     const ar = await fetch(`${API_BASE}/config/addons`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
     const addonsData = await ar.json();
     if (Array.isArray(addonsData) && addonsData.length > 0) {
-      ADDONS = addonsData.map(a => ({ key: a.name, price: a.price, description: a.description || '' }));
+      ADDONS = addonsData.map(a => ({ key: a.name, price: a.price, description: a.description || '', image_url: a.image_url || '' }));
     }
   } catch(e) {}
 
