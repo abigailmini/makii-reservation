@@ -946,6 +946,7 @@ function startEditById(type, id) {
   form.style.borderRadius = '10px';
   form.style.padding = '8px';
   document.getElementById('menuStatus').textContent = `Editing: ${name} — change fields and click ＋ to save`;
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function addMenuItem(type) {
