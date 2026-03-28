@@ -187,6 +187,14 @@
     <input type="hidden" id="editCreatedAt">
     <label>Guest Names (comma-separated)</label>
     <textarea id="editGuestNames" placeholder="John, Jane, Mike"></textarea>
+    <label>Party Size</label>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <button type="button" onclick="adjustPax(-1)" style="width:44px;height:44px;border-radius:10px;border:1px solid var(--border);background:rgba(201,169,110,0.08);color:var(--gold);font-size:1.3rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
+      <span id="editPaxDisplay" style="font-size:1.4rem;font-weight:600;color:var(--text);min-width:32px;text-align:center">2</span>
+      <input type="hidden" id="editPax" value="2">
+      <button type="button" onclick="adjustPax(1)" style="width:44px;height:44px;border-radius:10px;border:1px solid var(--border);background:rgba(201,169,110,0.08);color:var(--gold);font-size:1.3rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+    </div>
+    <div id="paxWarning" style="display:none;font-size:0.75rem;color:var(--red);margin-bottom:8px;padding:6px 10px;background:rgba(184,84,80,0.06);border:1px solid rgba(184,84,80,0.1);border-radius:8px">⚠️ Exceeds room capacity</div>
     <label>Dietary / Special Request</label>
     <textarea id="editNotes" placeholder="No shellfish, birthday celebration..."></textarea>
     <label>Phone</label>
@@ -606,6 +614,12 @@ function openEdit(idx) {
   document.getElementById('editNotes').value = r.notes || '';
   document.getElementById('editPhone').value = r.phone || '';
   document.getElementById('editEmail').value = r.email || '';
+  const paxVal = parseInt(r.pax) || 1;
+  document.getElementById('editPax').value = paxVal;
+  document.getElementById('editPaxDisplay').textContent = paxVal;
+  document.getElementById('paxWarning').style.display = 'none';
+  // Store room info for capacity warnings
+  window._editCourse = r.course || '';
   document.getElementById('editStatus').textContent = '';
   document.getElementById('cancelOptions').style.display = 'none';
   document.getElementById('editModal').classList.add('show');
@@ -613,6 +627,26 @@ function openEdit(idx) {
 
 function showCancelOptions() {
   document.getElementById('cancelOptions').style.display = 'block';
+}
+
+function adjustPax(delta) {
+  const input = document.getElementById('editPax');
+  const display = document.getElementById('editPaxDisplay');
+  const warning = document.getElementById('paxWarning');
+  let val = parseInt(input.value) || 1;
+  val = Math.max(1, val + delta);
+  input.value = val;
+  display.textContent = val;
+  // Capacity warning
+  const course = window._editCourse || '';
+  const isCozy = ['Custom Selection'].includes(course);
+  const maxCap = isCozy ? 5 : 10;
+  if (val > maxCap) {
+    warning.textContent = `⚠️ Exceeds ${isCozy ? 'Cozy' : 'Main'} Room capacity (${maxCap} pax) — override allowed`;
+    warning.style.display = 'block';
+  } else {
+    warning.style.display = 'none';
+  }
 }
 
 function closeModal() {
@@ -628,7 +662,8 @@ async function saveEdit() {
     guestNames: document.getElementById('editGuestNames').value,
     notes: document.getElementById('editNotes').value,
     phone: document.getElementById('editPhone').value,
-    email: document.getElementById('editEmail').value
+    email: document.getElementById('editEmail').value,
+    pax: parseInt(document.getElementById('editPax').value) || 1
   };
   try {
     const r = await fetch(`${API_BASE}/staff/update`, {

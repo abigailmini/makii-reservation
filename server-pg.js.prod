@@ -586,7 +586,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && path === '/staff/update') {
       const body = JSON.parse(await readBody(req));
-      const { createdAt, notes, guestNames, allergy, phone, email } = body;
+      const { createdAt, notes, guestNames, allergy, phone, email, pax, specialOccasion } = body;
       if (!createdAt) return json(res, 400, { error: 'createdAt is required' });
       const row = await qOne('SELECT * FROM reservations WHERE created_at = $1', [createdAt]);
       if (!row) return json(res, 404, { error: 'Reservation not found' });
@@ -596,6 +596,14 @@ const server = http.createServer(async (req, res) => {
       if (email !== undefined) await q('UPDATE reservations SET email=$1 WHERE created_at=$2', [email, createdAt]);
       if (guestNames !== undefined) await q('UPDATE reservations SET guest_names=$1 WHERE created_at=$2', [guestNames, createdAt]);
       if (allergy !== undefined) await q('UPDATE reservations SET allergy=$1 WHERE created_at=$2', [allergy, createdAt]);
+      if (specialOccasion !== undefined) await q('UPDATE reservations SET special_occasion=$1 WHERE created_at=$2', [specialOccasion, createdAt]);
+      if (pax !== undefined) {
+        const numPax = parseInt(pax);
+        if (!isNaN(numPax) && numPax >= 1) {
+          await q('UPDATE reservations SET pax=$1 WHERE created_at=$2', [numPax, createdAt]);
+          console.log(`[STAFF EDIT] Pax changed: ${row.pax} → ${numPax} for ${row.name} (${row.date} ${row.session})`);
+        }
+      }
       await q('UPDATE reservations SET edited_at=$1, edited_by=$2 WHERE created_at=$3', [now, 'staff', createdAt]);
       console.log(`[STAFF EDIT] Reservation ${createdAt} updated`);
       await createStaffNotification(
