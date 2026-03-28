@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fusion Omakase Staff Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #E0D6C6; --card: #EAE2D4; --card-hover: #D6CCBB;
+    --gold: #1A1A1A; --gold-dim: rgba(26,26,26,0.3);
+    --text: #1A1A1A; --dim: #4A4A4A; --border: rgba(26,26,26,0.1);
+    --green: #4A7A5A; --yellow: #1A1A1A; --red: #B85450; --blue: #5B7EA6;
+  }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-weight: 300; -webkit-font-smoothing: antialiased; }
+
+  .header {
+    padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 10;
+    backdrop-filter: blur(12px);
+  }
+  .header .logo { font-size: 1.1rem; font-weight: 500; color: var(--gold); letter-spacing: 0.06em; }
+  .header .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  .header .date-nav { display: flex; align-items: center; gap: 8px; }
+  .header .date-nav button { background: none; border: 1px solid var(--border); color: var(--dim); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; transition: all 150ms; }
+  .header .date-nav button:hover { border-color: var(--gold-dim); color: var(--gold); }
+  .header .date-label { font-size: 0.85rem; color: var(--text); min-width: 140px; text-align: center; }
+  .header .today-tag { font-size: 0.6rem; background: var(--gold); color: #F5EDE0; padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.05em; }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 16px; }
+
+  /* Stats bar */
+  .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 12px; text-align: center; }
+  .stat-card .stat-val { font-size: 1.5rem; font-weight: 500; color: var(--gold); }
+  .stat-card .stat-label { font-size: 0.65rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+  /* Session block */
+  .session-block { margin-bottom: 24px; }
+  .session-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px 10px 0 0; cursor: pointer;
+  }
+  .session-header:hover { background: var(--card-hover); }
+  .session-header .session-name { font-weight: 500; font-size: 0.95rem; }
+  .session-header .session-time { font-size: 0.78rem; color: var(--dim); margin-left: 10px; }
+  .session-header .seat-count { display: flex; align-items: center; gap: 8px; }
+  .seat-bar { width: 80px; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .seat-bar .fill { height: 100%; border-radius: 3px; transition: width 300ms ease; }
+  .seat-bar .fill.green { background: var(--green); }
+  .seat-bar .fill.yellow { background: var(--yellow); }
+  .seat-bar .fill.red { background: var(--red); }
+  .seat-text { font-size: 0.75rem; color: var(--dim); white-space: nowrap; }
+
+  .session-body { border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; }
+
+  /* Course summary */
+  .course-summary { display: flex; gap: 6px; padding: 10px 16px; background: rgba(201,169,110,0.03); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .course-chip { font-size: 0.7rem; padding: 4px 10px; border-radius: 20px; background: rgba(201,169,110,0.08); color: var(--gold); border: 1px solid rgba(201,169,110,0.15); }
+
+  /* Guest rows */
+  .guest-row {
+    display: grid; grid-template-columns: 36px 1fr auto;
+    align-items: center; gap: 12px; padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background 150ms ease;
+  }
+  .guest-row:last-child { border-bottom: none; }
+  .guest-row:hover { background: rgba(255,255,255,0.015); }
+
+  .guest-num { width: 28px; height: 28px; border-radius: 50%; background: rgba(201,169,110,0.08); border: 1px solid rgba(201,169,110,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--gold); font-weight: 500; }
+
+  .guest-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .guest-name { font-weight: 400; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .guest-meta { font-size: 0.72rem; color: var(--dim); display: flex; gap: 10px; flex-wrap: wrap; }
+  .guest-course { font-size: 0.72rem; color: var(--gold); }
+  .guest-phone { font-size: 0.72rem; color: var(--dim); }
+
+  .guest-tags { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+  .tag { font-size: 0.6rem; padding: 3px 7px; border-radius: 4px; font-weight: 500; letter-spacing: 0.03em; text-transform: uppercase; }
+  .tag.allergy { background: rgba(184,84,80,0.1); color: var(--red); border: 1px solid rgba(184,84,80,0.25); }
+  .tag.notes { background: rgba(91,126,166,0.1); color: var(--blue); border: 1px solid rgba(91,126,166,0.2); }
+  .tag.vip { background: rgba(139,115,85,0.1); color: var(--gold); border: 1px solid rgba(139,115,85,0.2); }
+  .tag.paid { background: rgba(91,138,106,0.12); color: var(--green); border: 1px solid rgba(91,138,106,0.2); }
+  .tag.occasion { background: rgba(196,170,120,0.15); color: #8B7355; border: 1px solid rgba(196,170,120,0.35); }
+
+  /* Notes tooltip */
+  .notes-detail { display: none; padding: 8px 16px 12px 56px; font-size: 0.76rem; color: var(--dim); line-height: 1.5; background: rgba(255,255,255,0.01); border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .notes-detail.show { display: block; }
+
+  /* Detail panel */
+  .detail-panel { display:none; padding:12px 16px; background:linear-gradient(180deg, rgba(0,0,0,0.12), transparent); border:1px solid rgba(201,169,110,0.06); margin:8px 12px 18px; border-radius:10px; color:var(--text); }
+  .detail-panel.show { display:block; }
+  .detail-row { display:flex; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.02); }
+  .detail-row .label { color:var(--dim); font-size:0.78rem; }
+  .detail-row .value { color:var(--text); font-size:0.9rem; text-align:right; }
+  .detail-allergy { color:var(--red); font-weight:600; }
+
+  /* Empty state */
+  .empty-session { padding: 24px 16px; text-align: center; color: var(--dim); font-size: 0.85rem; }
+
+  /* Status badges */
+  .status-badge { font-size:0.6rem; padding:3px 8px; border-radius:4px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; display:inline-block; margin-left:6px; vertical-align:middle; }
+  .status-confirmed { background:rgba(74,122,90,0.12); color:var(--green); border:1px solid rgba(91,138,106,0.25); }
+  .status-booked { background:rgba(74,122,90,0.12); color:var(--green); border:1px solid rgba(91,138,106,0.25); }
+  .status-manual { background:rgba(91,126,166,0.1); color:var(--blue); border:1px solid rgba(91,126,166,0.2); }
+
+  /* Manual booking course counters */
+  .manual-course-card { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border:1px solid var(--border); border-radius:8px; background:rgba(255,255,255,0.02); transition:all 150ms; }
+  .manual-course-card.has-count { border-color:rgba(201,169,110,0.4); background:rgba(201,169,110,0.04); }
+  .manual-course-card .mc-info { flex:1; min-width:0; }
+  .manual-course-card .mc-name { font-family:'Cormorant Garamond',serif; font-size:0.95rem; font-weight:600; }
+  .manual-course-card .mc-price { font-size:0.78rem; color:var(--gold); }
+  .manual-course-card .mc-counter { display:flex; align-items:center; gap:12px; }
+  .manual-course-card .mc-counter button { width:28px; height:28px; border-radius:50%; border:1px solid var(--border); background:none; color:var(--gold); font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 120ms; }
+  .manual-course-card .mc-counter button:hover { border-color:var(--gold); background:rgba(201,169,110,0.08); }
+  .manual-course-card .mc-counter .mc-val { font-size:0.95rem; min-width:18px; text-align:center; font-weight:500; }
+  .mc-remaining { text-align:center; margin-top:8px; font-size:0.78rem; color:var(--dim); }
+  .mc-remaining.over { color:var(--red); }
+  .mc-remaining.done { color:var(--green); }
+  .status-cancelled { background:rgba(184,84,80,0.1); color:var(--red); border:1px solid rgba(184,84,80,0.25); }
+  .status-postponed { background:rgba(139,115,85,0.1); color:var(--gold); border:1px solid rgba(139,115,85,0.2); }
+  .status-charged { background:rgba(184,84,80,0.12); color:var(--red); border:1px solid rgba(184,84,80,0.3); }
+  .guest-row.cancelled { opacity:0.45; }
+
+  /* Add manually button */
+  .add-manual-btn { display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid var(--border); color:var(--gold); padding:8px 16px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:0.78rem; font-weight:500; transition:all 150ms; margin-bottom:16px; }
+  .add-manual-btn:hover { border-color:var(--gold-dim); background:rgba(201,169,110,0.05); }
+
+  /* Edit Modal */
+  .modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(44,36,24,0.5); z-index:100; align-items:center; justify-content:center; padding:16px; }
+  .modal-overlay.show { display:flex; }
+  .modal { background:var(--bg); border:1px solid var(--border); border-radius:14px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto; padding:20px; }
+  .modal h3 { color:var(--gold); font-size:1rem; font-weight:500; margin-bottom:16px; }
+  .modal label { display:block; font-size:0.72rem; color:var(--dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; margin-top:12px; }
+  .modal input, .modal textarea { width:100%; background:rgba(255,255,255,0.7); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-family:inherit; font-size:0.85rem; outline:none; }
+  .modal input:focus, .modal textarea:focus { border-color:var(--gold-dim); }
+  .modal textarea { resize:vertical; min-height:60px; }
+  .modal-actions { display:flex; gap:8px; margin-top:20px; flex-wrap:wrap; }
+  .modal-actions button { flex:1; min-width:80px; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:none; color:var(--text); font-family:inherit; font-size:0.78rem; cursor:pointer; transition:all 150ms; font-weight:500; }
+  .modal-actions button:hover { border-color:var(--gold-dim); }
+  .modal-actions .btn-save { background:var(--gold); color:var(--bg); border-color:var(--gold); }
+  .modal-actions .btn-save:hover { opacity:0.9; }
+  .modal-actions .btn-cancel-booking { background:rgba(184,84,80,0.1); color:var(--red); border-color:rgba(184,84,80,0.3); }
+  .modal-actions .btn-postpone { background:rgba(139,115,85,0.12); color:var(--gold); border-color:rgba(139,115,85,0.2); }
+  .modal-actions .btn-charge { background:rgba(91,138,106,0.12); color:var(--green); border-color:rgba(91,138,106,0.2); }
+  .modal-status { font-size:0.78rem; color:var(--dim); text-align:center; margin-top:12px; min-height:20px; }
+
+  /* Refresh */
+  .refresh-bar { text-align: center; padding: 12px; font-size: 0.7rem; color: var(--dim); }
+  .refresh-bar button { background: none; border: 1px solid var(--border); color: var(--dim); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.7rem; font-family: inherit; transition: all 150ms; }
+  .refresh-bar button:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+  /* Notifications */
+  .notif-btn { position:relative; background:none; border:1px solid var(--border); width:34px; height:34px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1rem; transition:all 150ms; color:var(--text); }
+  .notif-btn:hover { border-color:var(--gold-dim); }
+  .notif-badge { position:absolute; top:-4px; right:-4px; background:var(--red); color:#fff; font-size:0.55rem; font-weight:700; min-width:16px; height:16px; border-radius:8px; display:flex; align-items:center; justify-content:center; padding:0 4px; }
+  .notif-badge.hidden { display:none; }
+  .notif-panel { display:none; position:fixed; top:56px; right:12px; width:340px; max-width:calc(100vw - 24px); max-height:70vh; background:var(--bg); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.12); z-index:120; overflow:hidden; flex-direction:column; }
+  .notif-panel.show { display:flex; }
+  .notif-panel-header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border); }
+  .notif-panel-header h4 { font-size:0.88rem; font-weight:500; margin:0; }
+  .notif-panel-header button { background:none; border:1px solid var(--border); color:var(--dim); padding:4px 10px; border-radius:6px; cursor:pointer; font-size:0.68rem; font-family:inherit; transition:all 150ms; }
+  .notif-panel-header button:hover { border-color:var(--gold-dim); color:var(--gold); }
+  .notif-list { overflow-y:auto; flex:1; }
+  .notif-item { padding:12px 16px; border-bottom:1px solid var(--border); cursor:default; transition:background 150ms; }
+  .notif-item:last-child { border-bottom:none; }
+  .notif-item.unread { background:rgba(74,122,90,0.06); }
+  .notif-item .notif-title { font-size:0.82rem; font-weight:500; margin-bottom:2px; }
+  .notif-item .notif-msg { font-size:0.75rem; color:var(--dim); line-height:1.4; }
+  .notif-item .notif-time { font-size:0.65rem; color:var(--dim); margin-top:4px; opacity:0.7; }
+  .notif-empty { padding:24px; text-align:center; color:var(--dim); font-size:0.82rem; }
+
+  .loading { text-align: center; padding: 40px; color: var(--dim); }
+  .loading::before { content:''; display:inline-block; width:16px; height:16px; border-radius:50%; border:2px solid rgba(201,169,110,0.15); border-top-color:var(--gold); animation:spin 800ms linear infinite; margin-right:8px; vertical-align:middle; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  @media (max-width: 480px) {
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .seat-bar { width: 50px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo"><span class="live-dot"></span>FO STAFF</div>
+  <div class="date-nav">
+    <button onclick="navDate(-1)">‹</button>
+    <span class="date-label" id="dateLabel" onclick="toggleCalPicker()" style="cursor:pointer"></span>
+    <button onclick="navDate(1)">›</button>
+  </div>
+  <button class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()" title="Notifications">🔔<span class="notif-badge hidden" id="notifBadge">0</span></button>
+  <div id="calPicker" style="display:none;position:absolute;top:55px;right:20px;z-index:100;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,0.12);min-width:280px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <button onclick="calPickerNav(-1)" style="background:none;border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center">‹</button>
+      <span id="calPickerMonth" style="font-size:0.9rem;font-weight:500;color:var(--text)"></span>
+      <button onclick="calPickerNav(1)" style="background:none;border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center">›</button>
+    </div>
+    <div id="calPickerGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center"></div>
+  </div>
+</div>
+
+<!-- Notification Panel -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-panel-header">
+    <h4>🔔 Notifications</h4>
+    <button onclick="markAllRead()">Mark all read</button>
+  </div>
+  <div class="notif-list" id="notifList">
+    <div class="notif-empty">No notifications</div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="stats-bar" id="statsBar"></div>
+  <button class="add-manual-btn" onclick="openManualAdd()">＋ Add Manually</button>
+  <button class="add-manual-btn" onclick="openLockModal()" style="margin-left:8px">🔒 Lock</button>
+  <button class="add-manual-btn" onclick="openMenuEditor()" style="margin-left:8px">📋 Update Menu</button>
+  <div id="content"><div class="loading">Loading reservations...</div></div>
+  <div class="refresh-bar">
+    <button onclick="loadData()">↻ Refresh</button>
+    <span id="lastUpdate"></span>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>✏️ Edit Reservation</h3>
+    <input type="hidden" id="editCreatedAt">
+    <input type="hidden" id="editId">
+    <label>Guest Names (comma-separated)</label>
+    <textarea id="editGuestNames" placeholder="John, Jane, Mike"></textarea>
+    <label>Dietary / Special Request</label>
+    <textarea id="editNotes" placeholder="No shellfish, birthday celebration..."></textarea>
+    <label>Phone</label>
+    <input type="text" id="editPhone">
+    <label>Email</label>
+    <input type="text" id="editEmail">
+    <label>Special Occasion</label>
+    <select id="editOccasion" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+      <option value="">None</option>
+      <option value="Birthday">🎂 Birthday</option>
+      <option value="Anniversary">💍 Anniversary</option>
+      <option value="Casual Dining">Casual Dining</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-save" onclick="saveEdit()">💾 Save</button>
+      <button onclick="closeModal()">✕ Close</button>
+    </div>
+    <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">
+      <div style="font-size:0.72rem;color:var(--dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">Actions</div>
+      <div class="modal-actions">
+        <button class="btn-postpone" onclick="showPostponeOptions()">📅 Postpone</button>
+        <button class="btn-cancel-booking" onclick="showCancelOptions()">❌ Cancel</button>
+      </div>
+      <!-- Postpone sub-options (hidden by default) -->
+      <div id="postponeOptions" style="display:none;margin-top:12px;padding:12px;background:rgba(139,115,85,0.05);border:1px solid rgba(139,115,85,0.1);border-radius:10px">
+        <div style="font-size:0.72rem;color:var(--gold);margin-bottom:10px;font-weight:500">Reschedule to:</div>
+        <label style="font-size:0.75rem;color:var(--dim)">New Date</label>
+        <input type="date" id="postponeDate" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem;margin-bottom:8px">
+        <label style="font-size:0.75rem;color:var(--dim)">New Session</label>
+        <select id="postponeSession" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem;margin-bottom:10px">
+          <option value="Lunch">Lunch</option>
+          <option value="Dinner 1">Dinner 1</option>
+          <option value="Dinner 2">Dinner 2</option>
+        </select>
+        <div class="modal-actions">
+          <button class="btn-postpone" onclick="doPostpone()" style="flex:1">✅ Confirm Postpone</button>
+          <button onclick="document.getElementById('postponeOptions').style.display='none'" style="flex:1;color:var(--dim)">Cancel</button>
+        </div>
+      </div>
+      <!-- Cancel sub-options (hidden by default) -->
+      <div id="cancelOptions" style="display:none;margin-top:12px;padding:12px;background:rgba(184,84,80,0.05);border:1px solid rgba(184,84,80,0.1);border-radius:10px">
+        <div style="font-size:0.72rem;color:var(--red);margin-bottom:10px;font-weight:500">Cancel & charge deposit?</div>
+        <div class="modal-actions">
+          <button class="btn-charge" onclick="doAction('charge100')" style="flex:1">💳 100%</button>
+          <button class="btn-postpone" onclick="doAction('charge50')" style="flex:1">💳 50%</button>
+          <button onclick="doAction('cancel')" style="flex:1;color:var(--dim)">No Charge</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-status" id="editStatus"></div>
+  </div>
+</div>
+
+<!-- Manual Add Modal -->
+<div class="modal-overlay" id="manualModal">
+  <div class="modal">
+    <h3>＋ Manual Booking</h3>
+    <label>Session</label>
+    <select id="manualSession" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+      <option value="Lunch">Lunch (12:00 PM — 2:00 PM)</option>
+      <option value="Dinner 1">Dinner 1 (6:00 PM — 8:00 PM)</option>
+      <option value="Dinner 2">Dinner 2 (8:30 PM — 10:30 PM)</option>
+    </select>
+    <label>Guest Name</label>
+    <input type="text" id="manualName" placeholder="Full name">
+    <label>Phone</label>
+    <input type="text" id="manualPhone" placeholder="+60...">
+    <label>Email</label>
+    <input type="text" id="manualEmail" placeholder="email@example.com">
+    <label>Pax</label>
+    <input type="number" id="manualPax" value="2" min="1" max="20">
+    <label>Courses <span id="mcRemaining" class="mc-remaining" style="display:inline;margin-left:8px"></span></label>
+    <div id="manualCourseList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <label>Guest Names (comma-separated, optional)</label>
+    <textarea id="manualGuestNames" placeholder="Alice, Bob"></textarea>
+    <label>Dietary / Special Request</label>
+    <textarea id="manualNotes" placeholder="No shellfish, birthday..."></textarea>
+    <label>Special Occasion</label>
+    <select id="manualOccasion" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+      <option value="">None</option>
+      <option value="Birthday">🎂 Birthday</option>
+      <option value="Anniversary">💍 Anniversary</option>
+      <option value="Casual Dining">Casual Dining</option>
+    </select>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-save" onclick="submitManual()">✅ Confirm Booking</button>
+      <button onclick="closeManualModal()">✕ Close</button>
+    </div>
+    <div class="modal-status" id="manualStatus"></div>
+  </div>
+</div>
+
+<!-- Lock Modal -->
+<div class="modal-overlay" id="lockModal">
+  <div class="modal">
+    <h3>🔒 Lock Date / Session</h3>
+    <div id="currentLocks" style="margin-bottom:14px"></div>
+    <label>Scope</label>
+    <select id="lockScope" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+      <option value="all">Entire Day</option>
+      <option value="Lunch">Lunch only</option>
+      <option value="Dinner 1">Dinner 1 only</option>
+      <option value="Dinner 2">Dinner 2 only</option>
+    </select>
+    <label style="margin-top:12px">Reason</label>
+    <select id="lockReason" onchange="document.getElementById('lockCustom').style.display=this.value==='Custom'?'block':'none'" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+      <option value="Off Day">Off Day</option>
+      <option value="Holiday">Holiday</option>
+      <option value="Private Event">Private Event</option>
+      <option value="Custom">Custom...</option>
+    </select>
+    <input type="text" id="lockCustom" placeholder="Custom reason" style="display:none;margin-top:8px;width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-save" onclick="submitLock()">🔒 Lock</button>
+      <button onclick="closeLockModal()">✕ Close</button>
+    </div>
+    <div class="modal-status" id="lockStatus"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="menuModal">
+  <div class="modal" style="max-height:85vh;overflow-y:auto;max-width:520px">
+    <h3>📋 Update Menu</h3>
+    <label style="font-weight:600;margin-bottom:8px;display:block">Courses</label>
+    <div id="menuCoursesList"></div>
+    <div id="addCourseForm" style="margin-top:8px">
+      <div style="display:flex;gap:6px">
+        <input type="text" id="newCourseName" placeholder="Course name" style="flex:2;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:0.82rem">
+        <input type="number" id="newCoursePrice" placeholder="RM" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:0.82rem">
+        <button class="btn-save" onclick="addMenuItem('course')" style="padding:8px 12px;font-size:0.78rem">＋</button>
+      </div>
+      <textarea id="newCourseDesc" placeholder="Description (optional)" style="width:100%;margin-top:6px;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:0.78rem;min-height:50px;resize:vertical"></textarea>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input type="date" id="newCourseStart" placeholder="Start date" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-family:inherit;font-size:0.78rem">
+        <input type="date" id="newCourseEnd" placeholder="End date" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-family:inherit;font-size:0.78rem">
+      </div>
+      <div style="margin-top:8px">
+        <div style="font-size:0.72rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Available Days</div>
+        <div id="courseDayCheckboxes" style="display:flex;gap:4px;flex-wrap:wrap">
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="0" checked style="accent-color:var(--gold)"> Sun</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="1" checked style="accent-color:var(--gold)"> Mon</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="2" checked style="accent-color:var(--gold)"> Tue</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="3" checked style="accent-color:var(--gold)"> Wed</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="4" checked style="accent-color:var(--gold)"> Thu</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="5" checked style="accent-color:var(--gold)"> Fri</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="6" checked style="accent-color:var(--gold)"> Sat</label>
+        </div>
+      </div>
+    </div>
+
+    <label style="font-weight:600;margin:20px 0 8px;display:block">À La Carte Add-Ons</label>
+    <div id="menuAddonsList"></div>
+    <div id="addAddonForm" style="margin-top:8px">
+      <div style="display:flex;gap:6px">
+        <input type="text" id="newAddonName" placeholder="Add-on name" style="flex:2;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:0.82rem">
+        <input type="number" id="newAddonPrice" placeholder="RM" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:0.82rem">
+        <button class="btn-save" onclick="addMenuItem('addon')" style="padding:8px 12px;font-size:0.78rem">＋</button>
+      </div>
+      <textarea id="newAddonDesc" placeholder="Description (optional)" style="width:100%;margin-top:6px;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:0.78rem;min-height:50px;resize:vertical"></textarea>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input type="date" id="newAddonStart" placeholder="Start date" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-family:inherit;font-size:0.78rem">
+        <input type="date" id="newAddonEnd" placeholder="End date" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-family:inherit;font-size:0.78rem">
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+        <input type="number" id="newAddonSortOrder" placeholder="Sort #" min="0" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-family:inherit;font-size:0.78rem">
+        <select id="newAddonDisplayRow" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-family:inherit;font-size:0.78rem">
+          <option value="top">Row: Top</option>
+          <option value="bottom">Row: Bottom</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px">
+      <button onclick="closeMenuModal()">✕ Close</button>
+    </div>
+    <div class="modal-status" id="menuStatus"></div>
+  </div>
+</div>
+
+<script>
+const API_BASE_PROD = 'https://api.makiisushi.com';
+let API_BASE = (location.hostname === 'localhost') ? location.origin : API_BASE_PROD;
+// v2 cache bust
+
+let _reservations = []; // Global store for edit modal
+
+const SESSIONS = [
+  { name: 'Lunch', time: '12:00 PM — 2:00 PM', max: 15 },
+  { name: 'Dinner 1', time: '6:00 PM — 8:00 PM', max: 15 },
+  { name: 'Dinner 2', time: '8:30 PM — 10:30 PM', max: 15 }
+];
+
+let currentDate = new Date();
+currentDate.setHours(0,0,0,0);
+
+function dateStr(d) { const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
+function isToday(d) { const t = new Date(); t.setHours(0,0,0,0); return d.getTime() === t.getTime(); }
+
+function navDate(dir) {
+  currentDate = new Date(currentDate.getTime() + dir * 86400000);
+  updateDateLabel();
+  loadData();
+}
+
+function updateDateLabel() {
+  const label = document.getElementById('dateLabel');
+  const opts = { weekday: 'short', day: 'numeric', month: 'short' };
+  const txt = currentDate.toLocaleDateString('en-MY', opts);
+  label.innerHTML = isToday(currentDate) ? `<span class="today-tag">TODAY</span> ${txt}` : txt;
+}
+
+async function loadData() {
+  document.getElementById('content').innerHTML = '<div class="loading">Loading...</div>';
+  try {
+    const [availRes, resRes, locksRes, waitRes] = await Promise.all([
+      fetch(`${API_BASE}/availability?date=${dateStr(currentDate)}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } }),
+      fetch(`${API_BASE}/staff/reservations?date=${dateStr(currentDate)}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } }),
+      fetch(`${API_BASE}/staff/locks?date=${dateStr(currentDate)}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } }).catch(() => ({ json: () => ({ locks: [] }) })),
+      fetch(`${API_BASE}/staff/waitlist?date=${dateStr(currentDate)}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } }).catch(() => ({ json: () => ({ waitlist: [] }) }))
+    ]);
+    const avail = await availRes.json();
+    const data = await resRes.json();
+    const locksData = await locksRes.json();
+    currentLocks = locksData.locks || [];
+    const waitData = await waitRes.json();
+    window._waitlistData = waitData.waitlist || [];
+    render(avail, data.reservations || []); attachRowListeners();
+    // defensive retry: if reservations exist but no guest rows rendered, retry once after short delay
+    setTimeout(()=>{ try{ if ((data.reservations||[]).length>0 && document.querySelectorAll(".guest-row").length===0){ console.log("staff: retrying render due to missing rows"); render(avail, data.reservations || []); attachRowListeners(); } }catch(e){console.log("staff: retry failed", e.message);} }, 250);
+    document.getElementById('lastUpdate').textContent = ` Updated ${new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}`;
+  } catch(e) {
+    document.getElementById('content').innerHTML = `<div class="loading" style="color:#B85450">Failed to load. <a href="#" onclick="loadData();return false" style="color:var(--gold)">Retry</a></div>`;
+  }
+}
+
+function render(avail, reservations) {
+  _reservations = []; // Reset for fresh render
+
+  // Stats — only count active bookings (not cancelled/postponed) for capacity
+  const activeStatuses = ['confirmed', 'manual', 'booked'];
+  const activeRes = reservations.filter(r => activeStatuses.includes(r.status));
+  const totalGuests = activeRes.reduce((s, r) => s + (parseInt(r.pax) || 0), 0);
+  const totalBookings = reservations.length;
+  const totalSeats = SESSIONS.reduce((s, sess) => s + sess.max, 0);
+  const allergyCount = reservations.filter(r => r.notes && /allerg|diet|vegetar|vegan|halal|no\s*(pork|beef|shell|nut|gluten|dairy|seafood|alcohol)/i.test(r.notes)).length;
+  const occasionCount = reservations.filter(r => r.specialOccasion && r.specialOccasion.trim()).length;
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${totalGuests}</div><div class="stat-label">Guests</div></div>
+    <div class="stat-card"><div class="stat-val">${totalBookings}</div><div class="stat-label">Bookings</div></div>
+    <div class="stat-card"><div class="stat-val">${allergyCount}</div><div class="stat-label">⚠️ Dietary</div></div>
+    <div class="stat-card"><div class="stat-val">${occasionCount}</div><div class="stat-label">🎂 Occasions</div></div>
+  `;
+
+  // Sessions
+  let html = '';
+  SESSIONS.forEach(sess => {
+    const sessRes = reservations.filter(r => r.session === sess.name);
+    const activeSessRes = sessRes.filter(r => activeStatuses.includes(r.status));
+    const bookedPax = activeSessRes.reduce((s, r) => s + (parseInt(r.pax) || 0), 0);
+    const pct = Math.round((bookedPax / sess.max) * 100);
+    const fillClass = pct >= 90 ? 'red' : pct >= 50 ? 'yellow' : 'green';
+
+    // Course counts
+    const courseCounts = {};
+    sessRes.forEach(r => {
+      const courses = (r.course || '').split(',').map(c => c.trim()).filter(Boolean);
+      courses.forEach(c => { courseCounts[c] = (courseCounts[c] || 0) + 1; });
+    });
+
+    html += `<div class="session-block">
+      <div class="session-header" onclick="this.parentElement.querySelector('.session-body').classList.toggle('collapsed')">
+        <div><span class="session-name">${sess.name}</span>${currentLocks.some(l => l.session === 'all' || l.session === sess.name) ? '<span class="status-badge status-cancelled" style="margin-left:8px">🔒 LOCKED</span>' : ''}<span class="session-time">${sess.time}</span></div>
+        <div class="seat-count">
+          <div class="seat-bar"><div class="fill ${fillClass}" style="width:${pct}%"></div></div>
+          <span class="seat-text">${bookedPax}/${sess.max}</span>
+        </div>
+      </div>
+      <div class="session-body">`;
+
+    if (Object.keys(courseCounts).length > 0) {
+      html += `<div class="course-summary">`;
+      Object.entries(courseCounts).forEach(([name, count]) => {
+        html += `<span class="course-chip">${name} ×${count}</span>`;
+      });
+      html += `</div>`;
+    }
+
+    // Store session reservations in global array for edit modal
+    sessRes.forEach(r => { r._idx = _reservations.length; _reservations.push(r); });
+
+    if (sessRes.length === 0) {
+      html += `<div class="empty-session">No reservations yet</div>`;
+    } else {
+      sessRes.forEach((r, i) => {
+        const hasAllergy = r.notes && /allerg|diet|vegetar|vegan|halal|no\s*(pork|beef|shell|nut|gluten|dairy|seafood|alcohol)/i.test(r.notes);
+        const hasNotes = r.notes && r.notes.trim().length > 0;
+        const hasPaid = r.paymentIntent && r.paymentIntent.length > 0;
+        const courses = (r.course || '').split(',').map(c => c.trim()).filter(Boolean);
+        const courseDisplay = courses.length <= 2
+          ? courses.join(', ')
+          : [...new Set(courses)].map(c => { const cnt = courses.filter(x=>x===c).length; return cnt > 1 ? `${c} ×${cnt}` : c; }).join(', ');
+
+        // Parse addons and guestNames if present
+        let addonsHTML = '';
+        try {
+          const addons = r.addons ? (typeof r.addons === 'string' ? JSON.parse(r.addons) : r.addons) : {};
+          const addonEntries = Object.entries(addons || {}).filter(([,v])=>v>0);
+          if (addonEntries.length) addonsHTML = addonEntries.map(a=>`${a[0]} ×${a[1]}`).join('<br>');
+        } catch(e) { addonsHTML = ''; }
+
+        let guestNamesHTML = '';
+        try {
+          const gnames = r.guestNames ? (typeof r.guestNames === 'string' ? JSON.parse(r.guestNames) : r.guestNames) : [];
+          if (gnames && gnames.length) guestNamesHTML = gnames.map((n,idx)=>`${idx+1}. ${n}`).join('<br>');
+        } catch(e) { guestNamesHTML = ''; }
+
+        // Parse guest names for inline display
+        let guestNamesInline = '';
+        try {
+          const gn = r.guestNames ? (typeof r.guestNames === 'string' ? JSON.parse(r.guestNames) : r.guestNames) : [];
+          if (gn && gn.length && gn.some(n=>n.trim())) guestNamesInline = gn.filter(n=>n.trim()).join(', ');
+        } catch(e) { guestNamesInline = r.guestNames || ''; }
+
+        // Status badge
+        const isCancelled = ['cancelled','postponed','charged-50%','charged-100%'].includes(r.status);
+        const statusClass = r.status === 'confirmed' ? 'status-confirmed' : r.status === 'booked' ? 'status-booked' : r.status === 'manual' ? 'status-manual' : r.status === 'cancelled' ? 'status-cancelled' : r.status === 'postponed' ? 'status-postponed' : r.status?.startsWith('charged') ? 'status-charged' : 'status-confirmed';
+        const statusLabel = r.status === 'confirmed' ? 'Confirmed' : r.status === 'booked' ? 'Booked' : r.status === 'manual' ? 'Manual Confirm' : r.status === 'cancelled' ? 'Cancelled' : r.status === 'postponed' ? 'Postponed' : r.status === 'charged-50%' ? 'Charged 50%' : r.status === 'charged-100%' ? 'Charged 100%' : r.status || 'Confirmed';
+
+        html += `<div class="guest-row ${isCancelled ? 'cancelled' : ''}" data-detail-id="detail-${sess.name.replace(/\\s/g,'')}-${i}" style="cursor:pointer">
+          <div class="guest-num">${i + 1}</div>
+          <div class="guest-info">
+            <div class="guest-name">${r.name || 'Guest'} <span style="color:var(--dim);font-size:0.78rem">×${r.pax || 1}</span>
+              <span class="status-badge ${statusClass}">${statusLabel}</span>
+              <button class="tag" style="cursor:pointer;background:rgba(139,115,85,0.12);color:var(--gold);border:1px solid rgba(139,115,85,0.2);margin-left:6px;vertical-align:middle" onclick="event.stopPropagation();openEdit(${r._idx})">✏️</button>
+            </div>
+            <div class="guest-detail-lines" style="margin-top:6px;font-size:0.75rem;line-height:1.6">
+              <div style="color:var(--gold)">${courseDisplay || '—'}</div>
+              ${guestNamesInline ? `<div style="color:var(--dim)">👤 ${guestNamesInline}</div>` : ''}
+              ${addonsHTML ? `<div style="color:var(--gold);font-size:0.73rem">🍣 ${addonsHTML.replace(/<br>/g, ', ')}</div>` : ''}
+              ${(r.notes || r.allergy) ? `<div style="color:${hasAllergy || r.allergy ? 'var(--red)' : 'var(--dim)'}">📝 ${r.allergy ? r.allergy + (r.notes ? ' · ' + r.notes : '') : r.notes}</div>` : ''}
+              ${r.specialOccasion && r.specialOccasion.trim() ? `<div><span class="tag occasion">${r.specialOccasion.toLowerCase().includes('birthday') ? '🎂' : r.specialOccasion.toLowerCase().includes('anniversary') ? '💍' : '🎉'} ${r.specialOccasion}</span></div>` : ''}
+              <div style="color:var(--dim)">📞 ${r.phone || '—'}</div>
+            </div>
+          </div>
+          <div class="guest-tags">
+            ${hasPaid ? '<span class="tag paid">💳</span>' : ''}
+          </div>
+        </div>`;
+
+        // Detail panel (hidden) — shows full details
+        html += `<div class="detail-panel" id="detail-${sess.name.replace(/\s/g,'')}-${i}">
+          <div class="detail-row"><div class="label">Booker</div><div class="value">${r.name || '—'}</div></div>
+          <div class="detail-row"><div class="label">Phone</div><div class="value">${r.phone || '—'}</div></div>
+          <div class="detail-row"><div class="label">Email</div><div class="value">${r.email || '—'}</div></div>
+          <div class="detail-row"><div class="label">Guests</div><div class="value">${r.pax || 1}</div></div>
+          <div class="detail-row"><div class="label">Courses</div><div class="value">${courseDisplay || '—'}</div></div>
+          <div class="detail-row"><div class="label">Add-ons</div><div class="value">${addonsHTML || '—'}</div></div>
+          <div class="detail-row"><div class="label">Guest Names</div><div class="value">${guestNamesHTML || '—'}</div></div>
+          <div class="detail-row"><div class="label">Payment</div><div class="value">${r.paymentIntent ? 'Paid' : 'Unpaid'}</div></div>
+          <div class="detail-row"><div class="label">Notes</div><div class="value">${r.notes ? r.notes : '—'}</div></div>
+          <div class="detail-row"><div class="label">Special Occasion</div><div class="value">${r.specialOccasion && r.specialOccasion.trim() ? r.specialOccasion : '—'}</div></div>
+          <div style="text-align:right;margin-top:8px"><button onclick="copyEmail('${r.email}');event.stopPropagation()" style="background:none;border:1px solid var(--border);padding:6px 10px;border-radius:6px;color:var(--dim);cursor:pointer">Copy Email</button></div>
+        </div>`;
+
+        if (hasNotes) {
+          html += `<div class="notes-detail" id="notes-${i}-${sess.name.replace(/\s/g,'')}">📝 ${r.notes}</div>`;
+        }
+      });
+    }
+
+    html += `</div></div>`;
+  });
+
+  // Waitlist section
+  if (window._waitlistData && window._waitlistData.length > 0) {
+    html += `<div class="session-block" style="margin-top:24px;border-color:rgba(184,84,80,0.2)">
+      <div class="session-header" style="background:rgba(184,84,80,0.06)">
+        <div><span class="session-name">📋 Waitlist</span><span class="session-time">${window._waitlistData.length} waiting</span></div>
+      </div>
+      <div class="session-body">`;
+    window._waitlistData.forEach((w, i) => {
+      html += `<div class="guest-row" style="cursor:default">
+        <div class="guest-num">${i+1}</div>
+        <div class="guest-info">
+          <div class="guest-name">${w.name || 'Guest'} <span style="color:var(--dim);font-size:0.78rem">×${w.pax || 1}</span>
+            <span class="status-badge" style="background:rgba(184,84,80,0.1);color:var(--red);border:1px solid rgba(184,84,80,0.2);margin-left:6px">WAITLIST</span>
+          </div>
+          <div class="guest-tags">`;
+      if (w.session) html += `<span class="tag">${w.session}</span>`;
+      if (w.phone) html += `<span class="tag">📞 ${w.phone}</span>`;
+      if (w.email) html += `<span class="tag">✉️ ${w.email}</span>`;
+      html += `</div></div></div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  document.getElementById('content').innerHTML = html;
+  // Attach direct listeners to guest rows to ensure clicks work on mobile
+  attachRowListeners();
+}
+
+function attachRowListeners() {
+  document.querySelectorAll('.guest-row').forEach(row => {
+    row.removeEventListener('click', row._glistener);
+    const id = row.getAttribute('data-detail-id');
+    const fn = function(e) { if (e.target.tagName.toLowerCase()==='button' || e.target.closest('button')) return; toggleDetail(id); }
+    row._glistener = fn;
+    row.addEventListener('click', fn);
+  });
+}
+
+
+function toggleDetail(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // hide other panels
+  document.querySelectorAll('.detail-panel').forEach(d => { if (d.id !== id) d.classList.remove('show'); });
+  el.classList.toggle('show');
+}
+
+function copyEmail(e) { if (!e) return; navigator.clipboard && navigator.clipboard.writeText(e); alert('Email copied: ' + e); }
+
+// Init
+(async () => {
+  updateDateLabel();
+  loadData();
+  // Auto-refresh every 60s
+  setInterval(loadData, 60000);
+
+// Event delegation for guest row clicks (replaces inline onclick handlers)
+document.getElementById('content').addEventListener('click', function(e){
+  const row = e.target.closest('.guest-row');
+  if (!row) return;
+  const id = row.getAttribute('data-detail-id');
+  if (!id) return;
+  // If the click was on a button inside the row, ignore
+  if (e.target.tagName.toLowerCase() === 'button' || e.target.closest('button')) return;
+  toggleDetail(id);
+});
+
+})();
+
+// ── Edit Modal Functions ──
+function openEdit(idx) {
+  const r = _reservations[idx];
+  if (!r) return;
+  document.getElementById('editCreatedAt').value = r.createdAt || '';
+  document.getElementById('editId').value = r.id || '';
+  // Parse guestNames if JSON array
+  let gn = r.guestNames || '';
+  try { const arr = JSON.parse(gn); if (Array.isArray(arr)) gn = arr.filter(n=>n.trim()).join(', '); } catch(e) {}
+  document.getElementById('editGuestNames').value = gn;
+  document.getElementById('editNotes').value = r.notes || '';
+  document.getElementById('editPhone').value = r.phone || '';
+  document.getElementById('editEmail').value = r.email || '';
+  document.getElementById('editOccasion').value = r.specialOccasion || '';
+  document.getElementById('editStatus').textContent = '';
+  document.getElementById('cancelOptions').style.display = 'none';
+  document.getElementById('postponeOptions').style.display = 'none';
+  document.getElementById('editModal').classList.add('show');
+}
+
+function showCancelOptions() {
+  document.getElementById('cancelOptions').style.display = 'block';
+  document.getElementById('postponeOptions').style.display = 'none';
+}
+
+function showPostponeOptions() {
+  document.getElementById('postponeOptions').style.display = 'block';
+  document.getElementById('cancelOptions').style.display = 'none';
+  // Default to tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('postponeDate').value = tomorrow.toISOString().split('T')[0];
+}
+
+async function doPostpone() {
+  const newDate = document.getElementById('postponeDate').value;
+  const newSession = document.getElementById('postponeSession').value;
+  if (!newDate || !newSession) { alert('Please select a date and session'); return; }
+  const createdAt = document.getElementById('editCreatedAt').value;
+  const id = document.getElementById('editId').value;
+  if (!id && !createdAt) return;
+  if (!confirm(`Postpone to ${newDate} ${newSession}?`)) return;
+  const status = document.getElementById('editStatus');
+  status.textContent = 'Processing...';
+  status.style.color = 'var(--gold)';
+  try {
+    const r = await fetch(`${API_BASE}/staff/action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
+      body: JSON.stringify({ id: id || undefined, createdAt, action: 'postpone', newDate, newSession })
+    });
+    const data = await r.json();
+    if (data.success) {
+      status.textContent = `✅ Postponed to ${newDate} ${newSession}`;
+      status.style.color = 'var(--green)';
+      setTimeout(() => { closeModal(); loadData(); }, 800);
+    } else {
+      status.textContent = '❌ ' + (data.error || 'Failed');
+      status.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    status.textContent = '❌ Network error';
+    status.style.color = 'var(--red)';
+  }
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('show');
+}
+
+async function saveEdit() {
+  const status = document.getElementById('editStatus');
+  status.textContent = 'Saving...';
+  status.style.color = 'var(--gold)';
+  const payload = {
+    id: document.getElementById('editId').value || undefined,
+    createdAt: document.getElementById('editCreatedAt').value,
+    guestNames: document.getElementById('editGuestNames').value,
+    notes: document.getElementById('editNotes').value,
+    phone: document.getElementById('editPhone').value,
+    email: document.getElementById('editEmail').value,
+    specialOccasion: document.getElementById('editOccasion').value
+  };
+  try {
+    const r = await fetch(`${API_BASE}/staff/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if (data.success) {
+      status.textContent = '✅ Saved!';
+      status.style.color = 'var(--green)';
+      setTimeout(() => { closeModal(); loadData(); }, 800);
+    } else {
+      status.textContent = '❌ ' + (data.error || 'Failed');
+      status.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    status.textContent = '❌ Network error';
+    status.style.color = 'var(--red)';
+  }
+}
+
+async function doAction(act) {
+  const createdAt = document.getElementById('editCreatedAt').value;
+  const id = document.getElementById('editId').value;
+  if (!id && !createdAt) return;
+  const labels = { cancel: 'Cancel with no charge?', postpone: 'Postpone this booking?', charge100: 'Charge 100% deposit?', charge50: 'Charge 50% deposit?' };
+  if (!confirm(labels[act] || `Perform ${act}?`)) return;
+  const status = document.getElementById('editStatus');
+  status.textContent = 'Processing...';
+  status.style.color = 'var(--gold)';
+  try {
+    const r = await fetch(`${API_BASE}/staff/action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
+      body: JSON.stringify({ id: id || undefined, createdAt, action: act })
+    });
+    const data = await r.json();
+    if (data.success) {
+      status.textContent = `✅ ${act.charAt(0).toUpperCase() + act.slice(1)} done!`;
+      status.style.color = 'var(--green)';
+      setTimeout(() => { closeModal(); loadData(); }, 800);
+    } else {
+      status.textContent = '❌ ' + (data.error || 'Failed');
+      status.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    status.textContent = '❌ Network error';
+    status.style.color = 'var(--red)';
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.getElementById('manualModal').addEventListener('click', function(e) {
+  if (e.target === this) closeManualModal();
+});
+
+// ── Manual Add Functions ──
+let manualCourseCounts = {};
+let manualCoursesList = [];
+
+async function loadManualCourses() {
+  try {
+    const r = await fetch(`${API_BASE}/api/courses`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
+    const data = await r.json();
+    manualCoursesList = (data.courses || []).filter(c => c.is_active);
+  } catch(e) {
+    manualCoursesList = [];
+  }
+}
+
+function renderManualCourses() {
+  const list = document.getElementById('manualCourseList');
+  const pax = parseInt(document.getElementById('manualPax').value) || 2;
+  manualCourseCounts = {};
+  manualCoursesList.forEach(c => { manualCourseCounts[c.name] = 0; });
+  // Default: assign all pax to first course
+  if (manualCoursesList.length > 0) manualCourseCounts[manualCoursesList[0].name] = pax;
+
+  list.innerHTML = manualCoursesList.map(c => `
+    <div class="manual-course-card${manualCourseCounts[c.name] ? ' has-count' : ''}" data-course="${c.name}">
+      <div class="mc-info">
+        <div class="mc-name">${c.name}</div>
+        <div class="mc-price">RM ${c.price} / pax</div>
+      </div>
+      <div class="mc-counter">
+        <button onclick="adjustManualCourse('${c.name.replace(/'/g,"\\'")}', -1)">−</button>
+        <span class="mc-val">${manualCourseCounts[c.name] || 0}</span>
+        <button onclick="adjustManualCourse('${c.name.replace(/'/g,"\\'")}', 1)">＋</button>
+      </div>
+    </div>
+  `).join('');
+  updateManualCourseRemaining();
+}
+
+function adjustManualCourse(name, delta) {
+  const pax = parseInt(document.getElementById('manualPax').value) || 2;
+  const current = manualCourseCounts[name] || 0;
+  const totalOthers = Object.values(manualCourseCounts).reduce((s, v) => s + v, 0) - current;
+  const newVal = Math.max(0, Math.min(pax - totalOthers, current + delta));
+  manualCourseCounts[name] = newVal;
+  updateManualCourseUI();
+}
+
+function updateManualCourseUI() {
+  const pax = parseInt(document.getElementById('manualPax').value) || 2;
+  const total = Object.values(manualCourseCounts).reduce((s, v) => s + v, 0);
+  manualCoursesList.forEach(c => {
+    const card = document.querySelector(`.manual-course-card[data-course="${c.name}"]`);
+    if (!card) return;
+    const valEl = card.querySelector('.mc-val');
+    if (valEl) valEl.textContent = manualCourseCounts[c.name] || 0;
+    card.classList.toggle('has-count', (manualCourseCounts[c.name] || 0) > 0);
+  });
+  updateManualCourseRemaining();
+}
+
+function updateManualCourseRemaining() {
+  const pax = parseInt(document.getElementById('manualPax').value) || 2;
+  const total = Object.values(manualCourseCounts).reduce((s, v) => s + v, 0);
+  const rem = document.getElementById('mcRemaining');
+  if (total === pax) { rem.textContent = '✓ All assigned'; rem.className = 'mc-remaining done'; }
+  else if (total < pax) { rem.textContent = `${pax - total} remaining`; rem.className = 'mc-remaining'; }
+  else { rem.textContent = `${total - pax} over!`; rem.className = 'mc-remaining over'; }
+}
+
+function getManualCourseString() {
+  const parts = [];
+  Object.entries(manualCourseCounts).forEach(([name, count]) => {
+    for (let i = 0; i < count; i++) parts.push(name);
+  });
+  return parts.join(', ');
+}
+
+async function openManualAdd() {
+  document.getElementById('manualName').value = '';
+  document.getElementById('manualPhone').value = '';
+  document.getElementById('manualEmail').value = '';
+  document.getElementById('manualPax').value = '2';
+  document.getElementById('manualGuestNames').value = '';
+  document.getElementById('manualNotes').value = '';
+  document.getElementById('manualOccasion').value = '';
+  document.getElementById('manualStatus').textContent = '';
+  await loadManualCourses();
+  renderManualCourses();
+  document.getElementById('manualModal').classList.add('show');
+}
+
+// Re-render courses when pax changes
+document.getElementById('manualPax').addEventListener('input', function() {
+  if (manualCoursesList.length > 0) renderManualCourses();
+});
+
+function closeManualModal() {
+  document.getElementById('manualModal').classList.remove('show');
+}
+
+async function submitManual() {
+  const status = document.getElementById('manualStatus');
+  const name = document.getElementById('manualName').value.trim();
+  if (!name) { status.textContent = '❌ Name is required'; status.style.color = 'var(--red)'; return; }
+  const pax = parseInt(document.getElementById('manualPax').value) || 2;
+  const courseTotal = Object.values(manualCourseCounts).reduce((s, v) => s + v, 0);
+  if (courseTotal !== pax) { status.textContent = `❌ Course count (${courseTotal}) must equal pax (${pax})`; status.style.color = 'var(--red)'; return; }
+  status.textContent = 'Saving...'; status.style.color = 'var(--gold)';
+  const payload = {
+    date: dateStr(currentDate),
+    session: document.getElementById('manualSession').value,
+    course: getManualCourseString(),
+    name,
+    phone: document.getElementById('manualPhone').value.trim(),
+    email: document.getElementById('manualEmail').value.trim(),
+    pax,
+    guestNames: document.getElementById('manualGuestNames').value.trim(),
+    notes: document.getElementById('manualNotes').value.trim(),
+    specialOccasion: document.getElementById('manualOccasion').value
+  };
+  try {
+    const r = await fetch(`${API_BASE}/staff/manual-book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if (data.success) {
+      status.textContent = '✅ Booking added!'; status.style.color = 'var(--green)';
+      setTimeout(() => { closeManualModal(); loadData(); }, 800);
+    } else {
+      status.textContent = '❌ ' + (data.error || 'Failed'); status.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    status.textContent = '❌ Network error'; status.style.color = 'var(--red)';
+  }
+}
+
+// ── Lock Functions ──
+document.getElementById('lockModal').addEventListener('click', function(e) {
+  if (e.target === this) closeLockModal();
+});
+
+let currentLocks = [];
+
+function openLockModal() {
+  document.getElementById('lockStatus').textContent = '';
+  document.getElementById('lockCustom').style.display = 'none';
+  document.getElementById('lockReason').value = 'Off Day';
+  document.getElementById('lockScope').value = 'all';
+  loadLocks();
+  document.getElementById('lockModal').classList.add('show');
+}
+
+function closeLockModal() {
+  document.getElementById('lockModal').classList.remove('show');
+}
+
+async function loadLocks() {
+  const el = document.getElementById('currentLocks');
+  try {
+    const r = await fetch(`${API_BASE}/staff/locks?date=${dateStr(currentDate)}`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
+    const data = await r.json();
+    currentLocks = data.locks || [];
+    if (currentLocks.length === 0) {
+      el.innerHTML = '<div style="font-size:0.78rem;color:var(--dim)">No locks for this date</div>';
+    } else {
+      el.innerHTML = currentLocks.map(l =>
+        `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:6px;border:1px solid rgba(184,84,80,0.12);border-radius:8px;background:rgba(184,84,80,0.05)">
+          <span style="font-size:0.8rem">🔒 ${l.session === 'all' ? 'Entire Day' : l.session} — ${l.reason}</span>
+          <button onclick="doUnlock('${l.session}')" style="background:none;border:1px solid var(--border);color:var(--gold);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:0.72rem">🔓 Unlock</button>
+        </div>`
+      ).join('');
+    }
+  } catch(e) { el.innerHTML = '<div style="font-size:0.78rem;color:var(--red)">Failed to load locks</div>'; }
+}
+
+async function submitLock() {
+  const status = document.getElementById('lockStatus');
+  const scope = document.getElementById('lockScope').value;
+  let reason = document.getElementById('lockReason').value;
+  if (reason === 'Custom') reason = document.getElementById('lockCustom').value.trim() || 'Custom';
+  status.textContent = 'Locking...'; status.style.color = 'var(--gold)';
+  try {
+    const r = await fetch(`${API_BASE}/staff/lock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
+      body: JSON.stringify({ date: dateStr(currentDate), session: scope, reason })
+    });
+    const data = await r.json();
+    if (data.success) {
+      status.textContent = '✅ Locked!'; status.style.color = 'var(--green)';
+      loadLocks();
+      setTimeout(() => loadData(), 500);
+    } else {
+      status.textContent = '❌ ' + (data.error || 'Failed'); status.style.color = 'var(--red)';
+    }
+  } catch(e) { status.textContent = '❌ Network error'; status.style.color = 'var(--red)'; }
+}
+
+async function doUnlock(session) {
+  try {
+    await fetch(`${API_BASE}/staff/unlock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
+      body: JSON.stringify({ date: dateStr(currentDate), session })
+    });
+    loadLocks();
+    setTimeout(() => loadData(), 500);
+  } catch(e) { console.error('Unlock failed', e); }
+}
+
+// ── Calendar Picker ──
+let calPickerDate = new Date();
+function toggleCalPicker() {
+  const el = document.getElementById('calPicker');
+  if (el.style.display === 'none') {
+    calPickerDate = new Date(currentDate);
+    renderCalPicker();
+    el.style.display = 'block';
+  } else el.style.display = 'none';
+}
+function calPickerNav(dir) {
+  calPickerDate.setMonth(calPickerDate.getMonth() + dir);
+  renderCalPicker();
+}
+function renderCalPicker() {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dows = ['M','T','W','T','F','S','S'];
+  const y = calPickerDate.getFullYear(), m = calPickerDate.getMonth();
+  document.getElementById('calPickerMonth').textContent = `${months[m]} ${y}`;
+  const grid = document.getElementById('calPickerGrid');
+  grid.innerHTML = '';
+  dows.forEach(d => { grid.innerHTML += `<div style="font-size:0.6rem;color:var(--dim);padding:4px 0">${d}</div>`; });
+  let startDow = new Date(y, m, 1).getDay(); startDow = startDow === 0 ? 6 : startDow - 1;
+  for (let i = 0; i < startDow; i++) grid.innerHTML += '<div></div>';
+  const days = new Date(y, m + 1, 0).getDate();
+  const todayStr = dateStr(new Date());
+  const selStr = dateStr(currentDate);
+  for (let d = 1; d <= days; d++) {
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isSel = ds === selStr;
+    const isToday = ds === todayStr;
+    const style = isSel ? 'background:var(--gold);color:var(--card);border-radius:50%;font-weight:600' : isToday ? 'color:var(--gold);font-weight:600' : 'color:var(--text)';
+    grid.innerHTML += `<div onclick="pickDate('${ds}')" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.82rem;${style};border-radius:50%;margin:1px auto">${d}</div>`;
+  }
+}
+function pickDate(ds) {
+  const [y,m,d] = ds.split('-').map(Number);
+  currentDate = new Date(y, m-1, d);
+  currentDate.setHours(0,0,0,0);
+  document.getElementById('calPicker').style.display = 'none';
+  updateDateLabel();
+  loadData();
+}
+// Close picker on outside click
+document.addEventListener('click', (e) => {
+  const picker = document.getElementById('calPicker');
+  const label = document.getElementById('dateLabel');
+  if (picker.style.display !== 'none' && !picker.contains(e.target) && e.target !== label) picker.style.display = 'none';
+});
+
+// ─── Menu Editor ───
+const H = { 'Bypass-Tunnel-Reminder': 'true' };
+let _editingItem = null; // { type, id }
+
+async function openMenuEditor() {
+  document.getElementById('menuModal').classList.add('show');
+  document.getElementById('menuStatus').textContent = '';
+  _editingItem = null;
+  await loadMenuItems();
+}
+function closeMenuModal() { document.getElementById('menuModal').classList.remove('show'); _editingItem = null; }
+document.getElementById('menuModal').addEventListener('click', function(e) { if (e.target === this) closeMenuModal(); });
+
+async function loadMenuItems() {
+  try {
+    const r = await fetch(`${API_BASE}/config/courses`, { headers: H });
+    const courses = await r.json();
+    renderMenuList('menuCoursesList', courses, 'course');
+  } catch(e) { document.getElementById('menuCoursesList').innerHTML = '<div style="color:var(--dim);font-size:0.82rem">Failed to load</div>'; }
+  try {
+    const r = await fetch(`${API_BASE}/config/addons`, { headers: H });
+    const addons = await r.json();
+    renderMenuList('menuAddonsList', addons, 'addon');
+  } catch(e) { document.getElementById('menuAddonsList').innerHTML = '<div style="color:var(--dim);font-size:0.82rem">No add-ons configured</div>'; }
+}
+
+let _menuItemsCache = { course: [], addon: [] };
+
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function renderMenuList(containerId, items, type) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  _menuItemsCache[type] = items || [];
+  if (!items || items.length === 0) { c.innerHTML = '<div style="color:var(--dim);font-size:0.82rem">None</div>'; return; }
+  items.forEach(item => {
+    const name = item.course || item.name;
+    const price = item.price;
+    const id = item.id;
+    const dateRange = (item.start_date || item.end_date) ? `${item.start_date || '∞'} → ${item.end_date || '∞'}` : '';
+    const dayAvail = item.day_availability || [0,1,2,3,4,5,6];
+    const isAllDays = dayAvail.length === 7;
+    const dayLabel = isAllDays ? '' : DAY_NAMES.filter((_,i) => dayAvail.includes(i)).join(', ');
+    const isAddon = type === 'addon';
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:8px 10px;margin-bottom:6px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.3)';
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px">
+        ${isAddon && item.image_url ? `<img src="${API_BASE}${item.image_url}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" onerror="this.style.display='none'">` : ''}
+        <span style="flex:2;font-size:0.85rem;font-weight:400">${name}</span>
+        <span style="font-size:0.82rem;color:var(--gold)">RM ${price}</span>
+        ${isAddon ? `<span style="font-size:0.65rem;color:var(--dim)" title="Sort order / Row">#${item.sort_order||0} ${item.display_row||'top'}</span>` : ''}
+        ${isAddon ? `<label style="background:none;border:1px solid var(--border);color:var(--gold);border-radius:6px;padding:4px 8px;font-size:0.72rem;cursor:pointer;display:inline-flex;align-items:center;gap:2px" title="Upload image">📷<input type="file" accept="image/*" onchange="uploadAddonImage(${id},this)" style="display:none"></label>` : ''}
+        <button onclick="startEditById('${type}',${id})" style="background:none;border:1px solid var(--border);color:var(--gold);border-radius:6px;padding:4px 8px;font-size:0.72rem;cursor:pointer">✏️</button>
+        <button onclick="deleteMenuItem('${type}',${id})" style="background:none;border:1px solid rgba(200,80,60,0.3);color:#C8503C;border-radius:6px;padding:4px 8px;font-size:0.72rem;cursor:pointer">✕</button>
+        ${isAddon && item.image_url ? `<button onclick="deleteAddonImage(${id})" style="background:none;border:1px solid rgba(200,80,60,0.3);color:#C8503C;border-radius:6px;padding:4px 8px;font-size:0.65rem;cursor:pointer" title="Remove image">🗑️</button>` : ''}
+      </div>
+      ${dateRange ? `<div style="font-size:0.7rem;color:var(--dim);margin-top:4px">📅 ${dateRange}</div>` : ''}
+      ${dayLabel ? `<div style="font-size:0.7rem;color:var(--gold);margin-top:4px">📆 ${dayLabel} only</div>` : ''}
+      ${item.description ? `<div style="font-size:0.72rem;color:var(--dim);margin-top:4px;white-space:pre-line;max-height:60px;overflow:hidden">${item.description}</div>` : ''}
+    `;
+    c.appendChild(row);
+  });
+}
+
+function startEditById(type, id) {
+  const items = _menuItemsCache[type] || [];
+  const item = items.find(i => i.id === id);
+  if (!item) { console.error('Item not found:', type, id); return; }
+  const name = item.course || item.name;
+  _editingItem = { type, id };
+  const prefix = type === 'course' ? 'Course' : 'Addon';
+  document.getElementById(`new${prefix}Name`).value = name;
+  document.getElementById(`new${prefix}Price`).value = item.price;
+  document.getElementById(`new${prefix}Desc`).value = item.description || '';
+  document.getElementById(`new${prefix}Start`).value = item.start_date || '';
+  document.getElementById(`new${prefix}End`).value = item.end_date || '';
+  if (type === 'addon') {
+    document.getElementById('newAddonSortOrder').value = item.sort_order || 0;
+    document.getElementById('newAddonDisplayRow').value = item.display_row || 'top';
+  }
+  // Populate day availability checkboxes for courses
+  if (type === 'course') {
+    const dayAvail = item.day_availability || [0,1,2,3,4,5,6];
+    document.querySelectorAll('#courseDayCheckboxes input[type=checkbox]').forEach(cb => {
+      cb.checked = dayAvail.includes(parseInt(cb.value));
+    });
+  }
+  const form = document.getElementById(`add${prefix}Form`);
+  form.style.border = '2px solid var(--gold)';
+  form.style.borderRadius = '10px';
+  form.style.padding = '8px';
+  document.getElementById('menuStatus').textContent = `Editing: ${name} — change fields and click ＋ to save`;
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function addMenuItem(type) {
+  const prefix = type === 'course' ? 'Course' : 'Addon';
+  const nameEl = document.getElementById(`new${prefix}Name`);
+  const priceEl = document.getElementById(`new${prefix}Price`);
+  const descEl = document.getElementById(`new${prefix}Desc`);
+  const startEl = document.getElementById(`new${prefix}Start`);
+  const endEl = document.getElementById(`new${prefix}End`);
+  const name = nameEl.value.trim();
+  const price = parseInt(priceEl.value) || 0;
+  const description = descEl.value.trim();
+  const start_date = startEl.value || null;
+  const end_date = endEl.value || null;
+  if (!name) return;
+  const status = document.getElementById('menuStatus');
+  // Collect day_availability for courses
+  let day_availability = [0,1,2,3,4,5,6];
+  if (type === 'course') {
+    day_availability = [];
+    document.querySelectorAll('#courseDayCheckboxes input[type=checkbox]').forEach(cb => {
+      if (cb.checked) day_availability.push(parseInt(cb.value));
+    });
+  }
+  const endpoint = type === 'course' ? 'courses' : 'addons';
+  try {
+    const isEdit = _editingItem && _editingItem.type === type;
+    const method = isEdit ? 'PUT' : 'POST';
+    const url = isEdit ? `${API_BASE}/config/${endpoint}/${_editingItem.id}` : `${API_BASE}/config/${endpoint}`;
+    const payload = { name, price, description, start_date, end_date };
+    if (type === 'course') payload.day_availability = day_availability;
+    if (type === 'addon') {
+      payload.sort_order = parseInt(document.getElementById('newAddonSortOrder').value) || 0;
+      payload.display_row = document.getElementById('newAddonDisplayRow').value || 'top';
+    }
+    const r = await fetch(url, {
+      method, headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (r.ok) {
+      nameEl.value = ''; priceEl.value = ''; descEl.value = ''; startEl.value = ''; endEl.value = '';
+      // Reset day checkboxes to all checked
+      if (type === 'course') {
+        document.querySelectorAll('#courseDayCheckboxes input[type=checkbox]').forEach(cb => { cb.checked = true; });
+      }
+      if (type === 'addon') { document.getElementById('newAddonSortOrder').value = ''; document.getElementById('newAddonDisplayRow').value = 'top'; }
+      status.textContent = isEdit ? '✓ Updated' : '✓ Added';
+      _editingItem = null;
+      const form = document.getElementById(`add${prefix}Form`);
+      form.style.border = ''; form.style.padding = ''; form.style.borderRadius = '';
+      await loadMenuItems();
+    } else { status.textContent = '✕ Failed'; }
+  } catch(e) { status.textContent = '✕ Error'; }
+}
+
+async function deleteMenuItem(type, id) {
+  if (!confirm('Remove this item?')) return;
+  const status = document.getElementById('menuStatus');
+  try {
+    const r = await fetch(`${API_BASE}/config/${type === 'course' ? 'courses' : 'addons'}/${id}`, {
+      method: 'DELETE', headers: H
+    });
+    if (r.ok) { status.textContent = '✓ Removed'; await loadMenuItems(); }
+    else { status.textContent = '✕ Failed'; }
+  } catch(e) { status.textContent = '✕ Error'; }
+}
+
+// ── Addon Image Upload/Delete ──
+async function uploadAddonImage(addonId, inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  const status = document.getElementById('menuStatus');
+  status.textContent = '⏳ Uploading image...';
+  const fd = new FormData();
+  fd.append('image', file);
+  try {
+    const r = await fetch(`${API_BASE}/config/addons/${addonId}/image`, {
+      method: 'POST', headers: H, body: fd
+    });
+    if (r.ok) { status.textContent = '✓ Image uploaded'; await loadMenuItems(); }
+    else { status.textContent = '✕ Upload failed'; }
+  } catch(e) { status.textContent = '✕ Upload error'; }
+}
+
+async function deleteAddonImage(addonId) {
+  if (!confirm('Remove this addon image?')) return;
+  const status = document.getElementById('menuStatus');
+  try {
+    const r = await fetch(`${API_BASE}/config/addons/${addonId}/image`, {
+      method: 'DELETE', headers: H
+    });
+    if (r.ok) { status.textContent = '✓ Image removed'; await loadMenuItems(); }
+    else { status.textContent = '✕ Failed'; }
+  } catch(e) { status.textContent = '✕ Error'; }
+}
+
+// ── Notifications ──
+let _notifOpen = false;
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notifPanel');
+  _notifOpen = !_notifOpen;
+  if (_notifOpen) {
+    panel.classList.add('show');
+    loadNotifications();
+  } else {
+    panel.classList.remove('show');
+  }
+}
+
+// Close panel on outside click
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notifPanel');
+  const btn = document.getElementById('notifBtn');
+  if (_notifOpen && !panel.contains(e.target) && !btn.contains(e.target)) {
+    _notifOpen = false;
+    panel.classList.remove('show');
+  }
+});
+
+async function loadNotifCount() {
+  try {
+    const r = await fetch(`${API_BASE}/staff/notifications/unread-count`, { headers: H });
+    const data = await r.json();
+    const badge = document.getElementById('notifBadge');
+    const count = data.unread || data.count || 0;
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : count;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  } catch(e) { /* silent */ }
+}
+
+async function loadNotifications() {
+  const list = document.getElementById('notifList');
+  try {
+    const r = await fetch(`${API_BASE}/staff/notifications`, { headers: H });
+    const data = await r.json();
+    const notifs = data.notifications || [];
+    if (notifs.length === 0) {
+      list.innerHTML = '<div class="notif-empty">No notifications yet</div>';
+      return;
+    }
+    list.innerHTML = notifs.map(n => {
+      const time = n.created_at ? timeAgo(new Date(n.created_at)) : '';
+      return `<div class="notif-item ${n.read ? '' : 'unread'}">
+        <div class="notif-title">${escHtml(n.title || n.type || 'Notification')}</div>
+        <div class="notif-msg">${escHtml(n.message || '')}</div>
+        <div class="notif-time">${time}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="notif-empty" style="color:var(--red)">Failed to load</div>';
+  }
+}
+
+async function markAllRead() {
+  try {
+    await fetch(`${API_BASE}/staff/notifications/read`, {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    document.getElementById('notifBadge').classList.add('hidden');
+    // Refresh panel if open
+    if (_notifOpen) loadNotifications();
+  } catch(e) { /* silent */ }
+}
+
+function timeAgo(date) {
+  const now = new Date();
+  const diff = Math.floor((now - date) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
+  return date.toLocaleDateString('en-MY', { day:'numeric', month:'short' });
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Poll unread count every 30s
+loadNotifCount();
+setInterval(loadNotifCount, 30000);
+</script>
+</body>
+</html>
