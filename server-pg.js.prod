@@ -231,8 +231,11 @@ async function getAvailability(date) {
     };
   });
 
-  const courseRows = await qRows("SELECT id, course, price, description, start_date, end_date FROM config WHERE status='active' AND (start_date IS NULL OR start_date <= $1) AND (end_date IS NULL OR end_date >= $2)", [date, date]);
-  const courses = courseRows.map(c => ({ name: c.course, price: c.price, description: c.description || '' }));
+  const dayOfWeek = new Date(date + 'T12:00:00+08:00').getDay(); // 0=Sun, 6=Sat
+  const courseRows = await qRows("SELECT id, course, price, description, start_date, end_date, day_availability FROM config WHERE status='active' AND (start_date IS NULL OR start_date <= $1) AND (end_date IS NULL OR end_date >= $2)", [date, date]);
+  const courses = courseRows
+    .filter(c => { const da = c.day_availability || [0,1,2,3,4,5,6]; return da.includes(dayOfWeek); })
+    .map(c => ({ name: c.course, price: c.price, description: c.description || '' }));
 
   const addonRows = await qRows("SELECT id, name, price, description, start_date, end_date FROM addons WHERE status='active' AND (start_date IS NULL OR start_date <= $1) AND (end_date IS NULL OR end_date >= $2)", [date, date]);
   const addons = addonRows.map(a => ({ name: a.name, price: a.price, description: a.description || '' }));
@@ -351,20 +354,24 @@ const server = http.createServer(async (req, res) => {
     // ── Public Menu/Courses API ──
     if (req.method === 'GET' && (path === '/api/menu' || path === '/api/courses')) {
       const today = params.date || new Date().toISOString().slice(0, 10);
-      const rows = await qRows("SELECT id, course, price, description, start_date, end_date, status FROM config WHERE status='active' ORDER BY id ASC");
+      const rows = await qRows("SELECT id, course, price, description, start_date, end_date, status, day_availability FROM config WHERE status='active' ORDER BY id ASC");
+      const queryDow = new Date(today + 'T12:00:00+08:00').getDay(); // 0=Sun, 6=Sat
 
       const mapped = rows.map(c => {
         const startDate = c.start_date || null;
         const endDate = c.end_date || null;
         const currentlyActive = (!startDate || startDate <= today) && (!endDate || endDate >= today);
+        const dayAvail = c.day_availability || [0,1,2,3,4,5,6];
+        const availableToday = dayAvail.includes(queryDow);
         return {
           id: c.id,
           name: c.course,
           price: Number(c.price || 0),
           description: c.description || '',
-          is_active: currentlyActive,
+          is_active: currentlyActive && availableToday,
           start_date: startDate,
-          end_date: endDate
+          end_date: endDate,
+          day_availability: dayAvail
         };
       });
 
@@ -375,19 +382,21 @@ const server = http.createServer(async (req, res) => {
     // ── Courses CRUD ──
     if (path === '/config/courses' && req.method === 'GET') {
       const rows = params.date
-        ? await qRows("SELECT id, course, price, description, start_date, end_date FROM config WHERE status='active' AND (start_date IS NULL OR start_date <= $1) AND (end_date IS NULL OR end_date >= $2)", [params.date, params.date])
-        : await qRows("SELECT id, course, price, description, start_date, end_date FROM config WHERE status='active'");
-      return json(res, 200, rows.map(c => ({ id: c.id, name: c.course, price: c.price, description: c.description || '', start_date: c.start_date || null, end_date: c.end_date || null })));
+        ? await qRows("SELECT id, course, price, description, start_date, end_date, day_availability FROM config WHERE status='active' AND (start_date IS NULL OR start_date <= $1) AND (end_date IS NULL OR end_date >= $2)", [params.date, params.date])
+        : await qRows("SELECT id, course, price, description, start_date, end_date, day_availability FROM config WHERE status='active'");
+      return json(res, 200, rows.map(c => ({ id: c.id, name: c.course, price: c.price, description: c.description || '', start_date: c.start_date || null, end_date: c.end_date || null, day_availability: c.day_availability || [0,1,2,3,4,5,6] })));
     }
     if (req.method === 'POST' && path === '/config/courses') {
       const body = JSON.parse(await readBody(req));
-      await q("INSERT INTO config (course, price, description, start_date, end_date, status) VALUES ($1,$2,$3,$4,$5,'active')", [body.name, body.price||0, body.description||'', body.start_date||null, body.end_date||null]);
+      const dayAvail = Array.isArray(body.day_availability) ? JSON.stringify(body.day_availability) : '[0,1,2,3,4,5,6]';
+      await q("INSERT INTO config (course, price, description, start_date, end_date, status, day_availability) VALUES ($1,$2,$3,$4,$5,'active',$6::jsonb)", [body.name, body.price||0, body.description||'', body.start_date||null, body.end_date||null, dayAvail]);
       return json(res, 200, { ok: true });
     }
     if (req.method === 'PUT' && path.match(/^\/config\/courses\/\d+$/)) {
       const id = path.split('/').pop();
       const body = JSON.parse(await readBody(req));
-      await q("UPDATE config SET course=$1, price=$2, description=$3, start_date=$4, end_date=$5 WHERE id=$6", [body.name, body.price||0, body.description||'', body.start_date||null, body.end_date||null, id]);
+      const dayAvail = Array.isArray(body.day_availability) ? JSON.stringify(body.day_availability) : '[0,1,2,3,4,5,6]';
+      await q("UPDATE config SET course=$1, price=$2, description=$3, start_date=$4, end_date=$5, day_availability=$6::jsonb WHERE id=$7", [body.name, body.price||0, body.description||'', body.start_date||null, body.end_date||null, dayAvail, id]);
       return json(res, 200, { ok: true });
     }
     if (req.method === 'DELETE' && path.startsWith('/config/courses/')) {

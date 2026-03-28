@@ -298,6 +298,18 @@
         <input type="date" id="newCourseStart" placeholder="Start date" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-family:inherit;font-size:0.78rem">
         <input type="date" id="newCourseEnd" placeholder="End date" style="flex:1;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-family:inherit;font-size:0.78rem">
       </div>
+      <div style="margin-top:8px">
+        <div style="font-size:0.72rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Available Days</div>
+        <div id="courseDayCheckboxes" style="display:flex;gap:4px;flex-wrap:wrap">
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="0" checked style="accent-color:var(--gold)"> Sun</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="1" checked style="accent-color:var(--gold)"> Mon</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="2" checked style="accent-color:var(--gold)"> Tue</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="3" checked style="accent-color:var(--gold)"> Wed</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="4" checked style="accent-color:var(--gold)"> Thu</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="5" checked style="accent-color:var(--gold)"> Fri</label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5)"><input type="checkbox" value="6" checked style="accent-color:var(--gold)"> Sat</label>
+        </div>
+      </div>
     </div>
 
     <label style="font-weight:600;margin:20px 0 8px;display:block">À La Carte Add-Ons</label>
@@ -878,6 +890,8 @@ async function loadMenuItems() {
 
 let _menuItemsCache = { course: [], addon: [] };
 
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
 function renderMenuList(containerId, items, type) {
   const c = document.getElementById(containerId);
   c.innerHTML = '';
@@ -888,6 +902,9 @@ function renderMenuList(containerId, items, type) {
     const price = item.price;
     const id = item.id;
     const dateRange = (item.start_date || item.end_date) ? `${item.start_date || '∞'} → ${item.end_date || '∞'}` : '';
+    const dayAvail = item.day_availability || [0,1,2,3,4,5,6];
+    const isAllDays = dayAvail.length === 7;
+    const dayLabel = isAllDays ? '' : DAY_NAMES.filter((_,i) => dayAvail.includes(i)).join(', ');
     const row = document.createElement('div');
     row.style.cssText = 'padding:8px 10px;margin-bottom:6px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.3)';
     row.innerHTML = `
@@ -898,6 +915,7 @@ function renderMenuList(containerId, items, type) {
         <button onclick="deleteMenuItem('${type}',${id})" style="background:none;border:1px solid rgba(200,80,60,0.3);color:#C8503C;border-radius:6px;padding:4px 8px;font-size:0.72rem;cursor:pointer">✕</button>
       </div>
       ${dateRange ? `<div style="font-size:0.7rem;color:var(--dim);margin-top:4px">📅 ${dateRange}</div>` : ''}
+      ${dayLabel ? `<div style="font-size:0.7rem;color:var(--gold);margin-top:4px">📆 ${dayLabel} only</div>` : ''}
       ${item.description ? `<div style="font-size:0.72rem;color:var(--dim);margin-top:4px;white-space:pre-line;max-height:60px;overflow:hidden">${item.description}</div>` : ''}
     `;
     c.appendChild(row);
@@ -916,6 +934,13 @@ function startEditById(type, id) {
   document.getElementById(`new${prefix}Desc`).value = item.description || '';
   document.getElementById(`new${prefix}Start`).value = item.start_date || '';
   document.getElementById(`new${prefix}End`).value = item.end_date || '';
+  // Populate day availability checkboxes for courses
+  if (type === 'course') {
+    const dayAvail = item.day_availability || [0,1,2,3,4,5,6];
+    document.querySelectorAll('#courseDayCheckboxes input[type=checkbox]').forEach(cb => {
+      cb.checked = dayAvail.includes(parseInt(cb.value));
+    });
+  }
   const form = document.getElementById(`add${prefix}Form`);
   form.style.border = '2px solid var(--gold)';
   form.style.borderRadius = '10px';
@@ -937,17 +962,31 @@ async function addMenuItem(type) {
   const end_date = endEl.value || null;
   if (!name) return;
   const status = document.getElementById('menuStatus');
+  // Collect day_availability for courses
+  let day_availability = [0,1,2,3,4,5,6];
+  if (type === 'course') {
+    day_availability = [];
+    document.querySelectorAll('#courseDayCheckboxes input[type=checkbox]').forEach(cb => {
+      if (cb.checked) day_availability.push(parseInt(cb.value));
+    });
+  }
   const endpoint = type === 'course' ? 'courses' : 'addons';
   try {
     const isEdit = _editingItem && _editingItem.type === type;
     const method = isEdit ? 'PUT' : 'POST';
     const url = isEdit ? `${API_BASE}/config/${endpoint}/${_editingItem.id}` : `${API_BASE}/config/${endpoint}`;
+    const payload = { name, price, description, start_date, end_date };
+    if (type === 'course') payload.day_availability = day_availability;
     const r = await fetch(url, {
       method, headers: { ...H, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, price, description, start_date, end_date })
+      body: JSON.stringify(payload)
     });
     if (r.ok) {
       nameEl.value = ''; priceEl.value = ''; descEl.value = ''; startEl.value = ''; endEl.value = '';
+      // Reset day checkboxes to all checked
+      if (type === 'course') {
+        document.querySelectorAll('#courseDayCheckboxes input[type=checkbox]').forEach(cb => { cb.checked = true; });
+      }
       status.textContent = isEdit ? '✓ Updated' : '✓ Added';
       _editingItem = null;
       const form = document.getElementById(`add${prefix}Form`);
