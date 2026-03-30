@@ -580,12 +580,12 @@ function render(avail, reservations) {
               <button class="tag" style="cursor:pointer;background:rgba(139,115,85,0.12);color:var(--gold);border:1px solid rgba(139,115,85,0.2);margin-left:6px;vertical-align:middle" onclick="event.stopPropagation();openEdit(${r._idx})">✏️</button>
             </div>
             <div class="guest-detail-lines" style="margin-top:6px;font-size:0.75rem;line-height:1.6">
-              <div style="color:var(--gold)">${courseDisplay || '—'}</div>
-              ${guestNamesInline ? `<div style="color:var(--dim)">👤 ${guestNamesInline}</div>` : ''}
-              ${addonsHTML ? `<div style="color:var(--gold);font-size:0.73rem">🍣 ${addonsHTML.replace(/<br>/g, ', ')}</div>` : ''}
-              ${(r.notes || r.allergy) ? `<div style="color:${hasAllergy || r.allergy ? 'var(--red)' : 'var(--dim)'}">📝 ${r.allergy ? r.allergy + (r.notes ? ' · ' + r.notes : '') : r.notes}</div>` : ''}
-              ${r.specialOccasion && r.specialOccasion.trim() ? `<div><span class="tag occasion">${r.specialOccasion.toLowerCase().includes('birthday') ? '🎂' : r.specialOccasion.toLowerCase().includes('anniversary') ? '💍' : '🎉'} ${r.specialOccasion}</span></div>` : ''}
-              <div style="color:var(--dim)">📞 ${r.phone || '—'}</div>
+              <div style="color:var(--dim)"><strong>Guest Name:</strong> ${guestNamesInline || '—'}</div>
+              <div style="color:var(--gold)"><strong>Course:</strong> ${courseDisplay || '—'}</div>
+              <div style="color:var(--gold);font-size:0.73rem"><strong>Add on:</strong> ${addonsHTML ? addonsHTML.replace(/<br>/g, ', ') : '—'}</div>
+              <div style="color:var(--dim)"><strong>Occasion:</strong> ${r.specialOccasion && r.specialOccasion.trim() ? (r.specialOccasion.toLowerCase().includes('birthday') ? '🎂 ' : r.specialOccasion.toLowerCase().includes('anniversary') ? '💍 ' : '🎉 ') + r.specialOccasion : '—'}</div>
+              <div style="color:${(hasAllergy || r.allergy) ? 'var(--red)' : 'var(--dim)'}"><strong>Notes:</strong> ${r.allergy ? r.allergy + (r.notes ? ' · ' + r.notes : '') : (r.notes || '—')}</div>
+              <div style="color:var(--dim)"><strong>Phone:</strong> ${r.phone || '—'}</div>
             </div>
           </div>
           <div class="guest-tags">
