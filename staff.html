@@ -499,10 +499,12 @@ function render(avail, reservations) {
               <button class="tag" style="cursor:pointer;background:rgba(139,115,85,0.12);color:var(--gold);border:1px solid rgba(139,115,85,0.2);margin-left:6px;vertical-align:middle" onclick="event.stopPropagation();openEdit(${r._idx})">✏️</button>
             </div>
             <div class="guest-detail-lines" style="margin-top:6px;font-size:0.75rem;line-height:1.6">
-              <div style="color:var(--gold)">${courseDisplay || '—'}</div>
-              ${guestNamesInline ? `<div style="color:var(--dim)">👤 ${guestNamesInline}</div>` : ''}
-              ${(r.notes || r.allergy) ? `<div style="color:${hasAllergy || r.allergy ? 'var(--red)' : 'var(--dim)'}">📝 ${r.allergy ? r.allergy + (r.notes ? ' · ' + r.notes : '') : r.notes}</div>` : ''}
-              <div style="color:var(--dim)">📞 ${r.phone || '—'}</div>
+              <div style="color:var(--gold)"><span style="color:var(--dim)">🍽 Course:</span> ${courseDisplay || '—'}</div>
+              <div style="color:var(--dim)">👤 Guests: ${guestNamesInline || '—'}</div>
+              <div style="color:var(--dim)">📞 Phone: ${r.phone || '—'}</div>
+              <div style="color:var(--dim)">🏠 Room: ${r.room || '—'}</div>
+              <div style="color:var(--dim)">🎉 Occasion: ${r.specialOccasion || '—'}</div>
+              <div style="color:${hasAllergy || r.allergy ? 'var(--red)' : 'var(--dim)'}">📝 Notes: ${r.allergy ? r.allergy + (r.notes ? ' · ' + r.notes : '') : (r.notes || '—')}</div>
             </div>
           </div>
           <div class="guest-tags">
