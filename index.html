@@ -723,9 +723,17 @@ let calViewDate = null; // current month being viewed
 let calMinDate = null;
 let calMaxDate = null;
 
+function getTodayMYDate() {
+  // Build a Date at local midnight for Malaysia "today" so calendar behavior is
+  // consistent even when browser/device timezone differs from MYT.
+  const now = new Date();
+  const myNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+  return new Date(myNow.getFullYear(), myNow.getMonth(), myNow.getDate());
+}
+
 function initDatePicker() {
-  const today = new Date();
-  calMinDate = new Date(today); calMinDate.setDate(calMinDate.getDate() + 1); // tomorrow
+  const today = getTodayMYDate();
+  calMinDate = new Date(today); // allow same-day bookings (session-level cutoff handled by API)
   calMaxDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // end of next month
   if (!calViewDate) calViewDate = new Date(calMinDate.getFullYear(), calMinDate.getMonth(), 1);
   renderCalendar();
@@ -741,7 +749,7 @@ function renderCalendar() {
   const monthLabel = document.getElementById('calMonth');
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dows = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = getTodayMYDate();
 
   const year = calViewDate.getFullYear(), month = calViewDate.getMonth();
   monthLabel.textContent = `${months[month]} ${year}`;
@@ -797,7 +805,7 @@ function renderCalendar() {
 
 async function loadCalendarDots(year, month) {
   if (!API_BASE) return;
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = getTodayMYDate();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const dots = document.querySelectorAll('.cal-day:not(.empty):not(.past):not(.blocked)');
   for (const dot of dots) {
