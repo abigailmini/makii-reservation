@@ -3,7 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fusion Omakase — Reservation</title>
+<title>Reserve Your Seat — Fusion Omakase by Makii Sushi</title>
+<meta name="description" content="Book your omakase experience at Fusion Omakase by Makii Sushi — intimate 12-seat counter in OUG, KL. Courses from RM199.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Reserve Your Seat — Fusion Omakase by Makii Sushi">
+<meta property="og:description" content="12-seat intimate omakase counter in KL. Premium sushi, seasonal ingredients. Courses from RM199 to RM499.">
+<meta property="og:image" content="https://makiisushi.com/assets/img/hero-toro-nori.jpg">
+<meta property="og:url" content="https://makiisushi.com/reservation/">
+<meta property="og:site_name" content="Fusion Omakase by Makii Sushi">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://makiisushi.com/assets/img/hero-toro-nori.jpg">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Inter:wght@300;400;500&display=swap');
 
@@ -723,17 +732,9 @@ let calViewDate = null; // current month being viewed
 let calMinDate = null;
 let calMaxDate = null;
 
-function getTodayMYDate() {
-  // Build a Date at local midnight for Malaysia "today" so calendar behavior is
-  // consistent even when browser/device timezone differs from MYT.
-  const now = new Date();
-  const myNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
-  return new Date(myNow.getFullYear(), myNow.getMonth(), myNow.getDate());
-}
-
 function initDatePicker() {
-  const today = getTodayMYDate();
-  calMinDate = new Date(today); // allow same-day bookings (session-level cutoff handled by API)
+  const today = new Date();
+  calMinDate = new Date(today); calMinDate.setDate(calMinDate.getDate() + 1); // tomorrow
   calMaxDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // end of next month
   if (!calViewDate) calViewDate = new Date(calMinDate.getFullYear(), calMinDate.getMonth(), 1);
   renderCalendar();
@@ -749,7 +750,7 @@ function renderCalendar() {
   const monthLabel = document.getElementById('calMonth');
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dows = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const today = getTodayMYDate();
+  const today = new Date(); today.setHours(0,0,0,0);
 
   const year = calViewDate.getFullYear(), month = calViewDate.getMonth();
   monthLabel.textContent = `${months[month]} ${year}`;
@@ -805,7 +806,7 @@ function renderCalendar() {
 
 async function loadCalendarDots(year, month) {
   if (!API_BASE) return;
-  const today = getTodayMYDate();
+  const today = new Date(); today.setHours(0,0,0,0);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const dots = document.querySelectorAll('.cal-day:not(.empty):not(.past):not(.blocked)');
   for (const dot of dots) {
@@ -1210,10 +1211,9 @@ async function processPayment() {
     let guestNames = [];
     const combined = (document.getElementById('guestNamesCombined') && document.getElementById('guestNamesCombined').value) || '';
     guestNames = combined.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean).slice(0, selectedPax || 0);
-    // pad with empty strings to match pax if needed
     while (guestNames.length < (selectedPax||0)) guestNames.push('');
 
-    // Submit booking with payment
+    // Step 1: Create payment intent on server (NOT confirmed yet)
     const res = await fetch(`${API_BASE}/book`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
@@ -1221,39 +1221,45 @@ async function processPayment() {
         date: selectedDate, session: selectedSession.name, course: selectedCourse,
         name, phone, email, pax: selectedPax, notes, occasion, allergy,
         createHold: true, payment_method: pmResult.paymentMethod.id,
-        addons: JSON.stringify(addons), guestNames: JSON.stringify(guestNames),
-        return_url: window.location.origin + window.location.pathname + '?payment_status=complete'
+        addons: JSON.stringify(addons), guestNames: JSON.stringify(guestNames)
       })
     });
 
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    // Handle 3D Secure if needed
-    if (data.requires_action && data.client_secret) {
-      btn.textContent = '3D Secure verification...';
-      const result = await stripe.handleCardAction(data.client_secret);
-      if (result.error) throw new Error(result.error.message);
-      
-      // 3DS passed — now complete the booking with the confirmed payment intent
+    // Step 2: Confirm payment client-side (triggers 3DS natively in browser)
+    if (data.requires_confirmation && data.client_secret) {
+      btn.textContent = 'Verifying card...';
+      const confirmResult = await stripe.confirmCardPayment(data.client_secret, {
+        payment_method: pmResult.paymentMethod.id
+      });
+      if (confirmResult.error) throw new Error(confirmResult.error.message);
+
+      if (confirmResult.paymentIntent.status !== 'requires_capture') {
+        throw new Error('Payment verification incomplete. Status: ' + confirmResult.paymentIntent.status);
+      }
+
+      // Step 3: Payment confirmed with 3DS — finalize booking on server
       btn.textContent = 'Completing reservation...';
-      const completeRes = await fetch(`${API_BASE}/book`, {
+      const completeRes = await fetch(`${API_BASE}/book/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
         body: JSON.stringify({
+          payment_intent: confirmResult.paymentIntent.id,
           date: selectedDate, session: selectedSession.name, course: selectedCourse,
-          name, phone, email, pax: selectedPax, notes, occasion, allergy,
-          createHold: true, 
-          confirmed_payment_intent: result.paymentIntent.id,
-          addons: JSON.stringify(addons), 
+          name, phone, email, pax: selectedPax, notes,
+          special_occasion: occasion, allergy,
+          addons: JSON.stringify(addons),
           guestNames: JSON.stringify(guestNames)
         })
       });
-      
+
       const completeData = await completeRes.json();
       if (completeData.error) throw new Error(completeData.error);
       showSuccess(completeData);
     } else {
+      // No payment required (shouldn't happen for createHold=true, but handle gracefully)
       showSuccess(data);
     }
   } catch (e) {
