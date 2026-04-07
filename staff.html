@@ -265,7 +265,7 @@
 <!-- Lock Modal -->
 <div class="modal-overlay" id="lockModal">
   <div class="modal">
-    <h3>🔒 Lock Date / Session</h3>
+    <h3 id="lockModalTitle">🔒 Lock Date / Session</h3>
     <div id="currentLocks" style="margin-bottom:14px"></div>
     <label>Scope</label>
     <select id="lockScope" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:0.85rem">
@@ -434,7 +434,7 @@ function render(avail, reservations) {
 
     html += `<div class="session-block">
       <div class="session-header" onclick="this.parentElement.querySelector('.session-body').classList.toggle('collapsed')">
-        <div><span class="session-name">${sess.name}</span>${currentLocks.some(l => l.session === 'all' || l.session === sess.name) ? '<span class="status-badge status-cancelled" style="margin-left:8px">🔒 LOCKED</span>' : ''}<span class="session-time">${sess.time}</span></div>
+        <div><span class="session-name">${sess.name}</span>${currentLocks.some(l => l.Session === 'all' || l.Session === sess.name) ? '<span class="status-badge status-cancelled" style="margin-left:8px">🔒 LOCKED</span>' : ''}<span class="session-time">${sess.time}</span></div>
         <div class="seat-count">
           <div class="seat-bar"><div class="fill ${fillClass}" style="width:${pct}%"></div></div>
           <span class="seat-text">${bookedPax}/${sess.max}</span>
@@ -787,6 +787,8 @@ function openLockModal() {
   document.getElementById('lockCustom').style.display = 'none';
   document.getElementById('lockReason').value = 'Off Day';
   document.getElementById('lockScope').value = 'all';
+  const dateLabel = currentDate.toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  document.getElementById('lockModalTitle').textContent = '🔒 Lock — ' + dateLabel;
   loadLocks();
   document.getElementById('lockModal').classList.add('show');
 }
@@ -806,8 +808,8 @@ async function loadLocks() {
     } else {
       el.innerHTML = currentLocks.map(l =>
         `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:6px;border:1px solid rgba(184,84,80,0.12);border-radius:8px;background:rgba(184,84,80,0.05)">
-          <span style="font-size:0.8rem">🔒 ${l.session === 'all' ? 'Entire Day' : l.session} — ${l.reason}</span>
-          <button onclick="doUnlock('${l.session}')" style="background:none;border:1px solid var(--border);color:var(--gold);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:0.72rem">🔓 Unlock</button>
+          <span style="font-size:0.8rem">🔒 ${l.Session === 'all' ? 'Entire Day' : l.Session} — ${l.Reason}</span>
+          <button onclick="doUnlock('${l.Session}')" style="background:none;border:1px solid var(--border);color:var(--gold);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:0.72rem">🔓 Unlock</button>
         </div>`
       ).join('');
     }
