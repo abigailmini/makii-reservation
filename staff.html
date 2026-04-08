@@ -4,6 +4,43 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fusion Omakase Staff Dashboard</title>
+<script>
+(function() {
+  const PIN = "Makiisushi@123";
+  const KEY = "makii_staff_auth";
+  const EXPIRY_DAYS = 30;
+  const stored = localStorage.getItem(KEY);
+  if (stored) {
+    try {
+      const { ts } = JSON.parse(stored);
+      if (Date.now() - ts < EXPIRY_DAYS * 86400000) return; // still valid
+    } catch(e) {}
+  }
+  localStorage.removeItem(KEY);
+  // Block page render until PIN entered
+  document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById("staffApp").style.display = "none";
+    document.getElementById("pinOverlay").style.display = "flex";
+  });
+  window._needsPin = true;
+})();
+function submitPin() {
+  const input = document.getElementById("pinInput");
+  const err = document.getElementById("pinError");
+  if (input.value === "Makiisushi@123") {
+    localStorage.setItem("makii_staff_auth", JSON.stringify({ ts: Date.now() }));
+    document.getElementById("pinOverlay").style.display = "none";
+    document.getElementById("staffApp").style.display = "";
+    window._needsPin = false;
+  } else {
+    err.textContent = "Incorrect password";
+    err.style.display = "block";
+    input.value = "";
+    input.focus();
+  }
+}
+</script>
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -147,9 +184,28 @@
     .stats-bar { grid-template-columns: repeat(2, 1fr); }
     .seat-bar { width: 50px; }
   }
+  #pinOverlay { display:none; position:fixed; inset:0; z-index:99999; background:var(--bg); justify-content:center; align-items:center; flex-direction:column; font-family:"Inter",sans-serif; }
+  #pinOverlay .pin-box { text-align:center; padding:40px; max-width:340px; width:100%; }
+  #pinOverlay .pin-logo { font-family:"Cormorant Garamond",serif; font-size:1.6rem; color:var(--gold); margin-bottom:8px; letter-spacing:0.15em; }
+  #pinOverlay .pin-sub { font-size:0.78rem; color:var(--dim); margin-bottom:32px; }
+  #pinOverlay input { width:100%; padding:14px; background:rgba(255,255,255,0.5); border:1px solid var(--border); border-radius:10px; font-size:1rem; color:var(--text); font-family:inherit; text-align:center; letter-spacing:0.1em; outline:none; }
+  #pinOverlay input:focus { border-color:var(--gold); box-shadow:0 4px 16px rgba(139,115,85,0.1); }
+  #pinOverlay button { margin-top:16px; width:100%; padding:14px; background:var(--gold); color:#fff; border:none; border-radius:10px; font-size:0.9rem; font-weight:500; cursor:pointer; font-family:inherit; letter-spacing:0.08em; }
+  #pinOverlay .pin-err { color:#C8503C; font-size:0.8rem; margin-top:12px; display:none; }
 </style>
 </head>
 <body>
+<div id="pinOverlay">
+  <div class="pin-box">
+    <div class="pin-logo">FUSION OMAKASE</div>
+    <div class="pin-sub">Staff Access</div>
+    <input type="password" id="pinInput" placeholder="Enter password" onkeydown="if(event.key==='Enter')submitPin()" autofocus>
+    <button onclick="submitPin()">ENTER</button>
+    <div class="pin-err" id="pinError"></div>
+  </div>
+</div>
+<div id="staffApp">
+
 
 <div class="header">
   <div class="logo"><span class="live-dot"></span>FO STAFF</div>
@@ -1048,5 +1104,6 @@ async function deleteMenuItem(type, id) {
   } catch(e) { status.textContent = '✕ Error'; }
 }
 </script>
+</div><!-- /staffApp -->
 </body>
 </html>
