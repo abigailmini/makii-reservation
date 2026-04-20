@@ -668,7 +668,7 @@ const server = http.createServer(async (req, res) => {
         name: r.name||'', phone: r.phone||'', email: r.email||'', pax: String(r.pax||1),
         session: r.session||'', course: (r.course||'').replace(/\n/g, ', '),
         notes: r.notes||'', status: r.status||'', paymentIntent: r.payment_intent||'',
-        paymentMethodId: r.payment_method_id||'', setupIntentId: r.setup_intent_id||'',
+        paymentMethodId: r.payment_method_id||'', stripeCustomerId: r.stripe_customer_id||'', setupIntentId: r.setup_intent_id||'',
         createdAt: r.created_at||'', guestNames: r.guest_names||'', allergy: r.allergy||'', specialOccasion: r.special_occasion||'', addons: r.addons||''
       }))});
     }
@@ -1102,6 +1102,7 @@ const server = http.createServer(async (req, res) => {
         const si = await stripe.setupIntents.create({
           usage: 'off_session',
           payment_method_types: ['card'],
+          payment_method_options: { card: { request_three_d_secure: 'any' } },
           metadata: { restaurant: 'Fusion Omakase by Makii Sushi', date, session, course, name, email, phone, pax: String(numPax) }
         });
         console.log('[STRIPE] SetupIntent created: ' + si.id);
@@ -1145,12 +1146,22 @@ const server = http.createServer(async (req, res) => {
       const specialOccasionStr = special_occasion || occasion || '';
       const addonsStr = addons || '';
       try {
+        // Create Stripe Customer and attach the PaymentMethod — required for off-session charging
+        const customer = await stripe.customers.create({
+          name,
+          email,
+          phone,
+          payment_method: paymentMethodId,
+          metadata: { reservation_date: date, session }
+        });
+        const stripeCustomerId = customer.id;
+        console.log(`[STRIPE] Customer created: ${stripeCustomerId} for ${name} (${email})`);
         if (sessionInfo.remaining >= numPax) {
           const reservation = await qOne(
-            'INSERT INTO reservations (date, session, course, name, phone, email, pax, status, notes, created_at, payment_intent, setup_intent_id, payment_method_id, guest_names, allergy, special_occasion, edited_at, edited_by, room, addons) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id, date, session, course, name, phone, email, pax, created_at',
-            [date, session, course, name, phone, email, numPax, 'confirmed', notes || '', now, '', setupIntentId, paymentMethodId, guestNamesStr, allergyStr, specialOccasionStr, '', '', '', addonsStr]
+            'INSERT INTO reservations (date, session, course, name, phone, email, pax, status, notes, created_at, payment_intent, setup_intent_id, payment_method_id, stripe_customer_id, guest_names, allergy, special_occasion, edited_at, edited_by, room, addons) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id, date, session, course, name, phone, email, pax, created_at',
+            [date, session, course, name, phone, email, numPax, 'confirmed', notes || '', now, '', setupIntentId, paymentMethodId, stripeCustomerId, guestNamesStr, allergyStr, specialOccasionStr, '', '', '', addonsStr]
           );
-          console.log(`[BOOK/CONFIRM] ${name} (${numPax}pax) → ${course} @ ${session} on ${date} — CONFIRMED (SI:${setupIntentId} PM:${paymentMethodId})`);
+          console.log(`[BOOK/CONFIRM] ${name} (${numPax}pax) → ${course} @ ${session} on ${date} — CONFIRMED (SI:${setupIntentId} PM:${paymentMethodId} CUS:${stripeCustomerId})`);
           try {
             await q(`UPDATE partial_bookings SET status='converted', payment_intent=$1 WHERE status='partial' AND email=$2 AND date=$3 AND session=$4`, [setupIntentId, email, date, session]);
           } catch(e) { console.error('[PARTIAL] Convert update failed:', e.message); }
@@ -1186,9 +1197,24 @@ const server = http.createServer(async (req, res) => {
       if (!row.payment_method_id) return json(res, 400, { error: 'No saved card on file for this reservation' });
       const amountCents = Math.round(parseFloat(amount) * 100);
       try {
+        // Ensure a Stripe Customer exists — required for off-session charges
+        let stripeCustomerId = row.stripe_customer_id;
+        if (!stripeCustomerId) {
+          const customer = await stripe.customers.create({
+            name: row.name,
+            email: row.email || undefined,
+            phone: row.phone || undefined,
+            payment_method: row.payment_method_id,
+            metadata: { reservation_id: String(row.id) }
+          });
+          stripeCustomerId = customer.id;
+          await q('UPDATE reservations SET stripe_customer_id=$1 WHERE id=$2', [stripeCustomerId, row.id]);
+          console.log(`[NOSHOW] Created Stripe Customer on-the-fly: ${stripeCustomerId} for ${row.name}`);
+        }
         const pi = await stripe.paymentIntents.create({
           amount: amountCents,
           currency: 'myr',
+          customer: stripeCustomerId,
           payment_method: row.payment_method_id,
           confirm: true,
           off_session: true,
